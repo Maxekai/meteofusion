@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.models.weather import ProviderForecast
-from app.providers.open_meteo import WeatherProviderError
+from app.providers.exceptions import WeatherProviderError
 from app.services.weather_service import obtain_weather_forecast
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])

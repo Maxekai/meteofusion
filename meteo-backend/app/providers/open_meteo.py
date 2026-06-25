@@ -3,13 +3,10 @@ from typing import Any
 import httpx
 
 from app.core.config import get_settings
+from app.providers.exceptions import WeatherProviderError
 
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
-
-
-class WeatherProviderError(Exception):
-    """Error controlado al consultar un proveedor meteorológico."""
 
 
 async def fetch_open_meteo(
@@ -27,11 +24,12 @@ async def fetch_open_meteo(
             "temperature_2m",
             "relative_humidity_2m",
             "precipitation_probability",
+            "cloud_cover"
             "wind_speed_10m",
             "dew_point_2m",
             "apparent_temperature",
             "precipitation",
-            "snowfall"
+            "snowfall",
         ],
     }
 
@@ -45,12 +43,12 @@ async def fetch_open_meteo(
 
     except httpx.TimeoutException as exc:
         raise WeatherProviderError(
-            "Open-Meteo ha superado el tiempo máximo de espera."
+            "Open-Meteo ha superado el tiempo maximo de espera."
         ) from exc
 
     except httpx.HTTPStatusError as exc:
         raise WeatherProviderError(
-            f"Open-Meteo respondió con estado {exc.response.status_code}."
+            f"Open-Meteo respondio con estado {exc.response.status_code}."
         ) from exc
 
     except httpx.RequestError as exc:
@@ -60,5 +58,5 @@ async def fetch_open_meteo(
 
     except ValueError as exc:
         raise WeatherProviderError(
-            "Open-Meteo devolvió una respuesta JSON inválida."
+            "Open-Meteo devolvio una respuesta JSON invalida."
         ) from exc

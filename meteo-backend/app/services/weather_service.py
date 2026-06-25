@@ -11,6 +11,7 @@ def normalize_open_meteo(data: dict[str, Any]) -> ProviderForecast:
     temperatures = hourly.get("temperature_2m", [])
     humidity = hourly.get("relative_humidity_2m", [])
     precipitation = hourly.get("precipitation_probability", [])
+    clouds = hourly.get("cloud_cover", [])
     wind = hourly.get("wind_speed_10m", [])
     dew_point = hourly.get("dew_point_2m", [])
     precipitation_amounts = hourly.get("precipitation", [])
@@ -31,6 +32,9 @@ def normalize_open_meteo(data: dict[str, Any]) -> ProviderForecast:
                 else None,
                 precipitation_probability=precipitation[index]
                 if index < len(precipitation)
+                else None,
+                cloud_cover=clouds[index]
+                if index < len(clouds)
                 else None,
                 wind_speed_kmh=wind[index]
                 if index < len(wind)
