@@ -4,7 +4,16 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from app.main import app
-from app.models.weather import ForecastPoint, ProviderForecast
+from app.models.weather import (
+    AggregatedDailyForecastPoint,
+    AggregatedForecast,
+    AggregatedHourlyForecastPoint,
+    AggregatedStat,
+    AggregationWindow,
+    DailyAggregationWindow,
+    ForecastPoint,
+    ProviderForecast,
+)
 
 
 client = TestClient(app)
@@ -18,6 +27,126 @@ RUN_REAL_OPEN_METEO_TESTS = os.getenv("RUN_REAL_OPEN_METEO_TESTS") in {
 
 
 class WeatherApiTestCase(unittest.TestCase):
+    def test_get_aggregated_forecast_returns_consensus_payload(self) -> None:
+        async def fake_obtain_aggregated_weather_forecast(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> AggregatedForecast:
+            self.assertEqual(latitude, BARCELONA_LATITUDE)
+            self.assertEqual(longitude, BARCELONA_LONGITUDE)
+            self.assertEqual(days, 7)
+            return AggregatedForecast(
+                latitude=latitude,
+                longitude=longitude,
+                timezone="Europe/Madrid",
+                days=days,
+                providers_requested=[
+                    "google_weather",
+                    "open_meteo",
+                    "weather_api",
+                ],
+                providers_used=[
+                    "google_weather",
+                    "open_meteo",
+                    "weather_api",
+                ],
+                warnings=[],
+                hourly_window=AggregationWindow(
+                    mode="common_provider_overlap",
+                    start="2026-07-12T10:00:00",
+                    end="2026-07-12T10:00:00",
+                ),
+                daily_window=DailyAggregationWindow(
+                    mode="common_provider_overlap",
+                    start="2026-07-12",
+                    end="2026-07-12",
+                ),
+                hourly_forecast=[
+                    AggregatedHourlyForecastPoint(
+                        datetime="2026-07-12T10:00",
+                        provider_count=3,
+                        temperature_c=AggregatedStat(min=20.0, avg=21.0, max=22.0),
+                        precipitation_probability=AggregatedStat(
+                            min=5.0,
+                            avg=10.0,
+                            max=15.0,
+                        ),
+                        precipitation_total=AggregatedStat(
+                            min=0.0,
+                            avg=0.2,
+                            max=0.4,
+                        ),
+                        precipitation_snow=AggregatedStat(
+                            min=0.0,
+                            avg=0.0,
+                            max=0.0,
+                        ),
+                        humidity_percent=55.0,
+                        cloud_cover=25.0,
+                        wind_speed_kmh=12.0,
+                        dew_point_c=14.0,
+                        apparent_temperature_c=21.5,
+                        condition="sunny",
+                    )
+                ],
+                daily_forecast=[
+                    AggregatedDailyForecastPoint(
+                        date="2026-07-12",
+                        provider_count=3,
+                        temperature_min_c=AggregatedStat(
+                            min=16.0,
+                            avg=17.0,
+                            max=18.0,
+                        ),
+                        temperature_max_c=AggregatedStat(
+                            min=28.0,
+                            avg=29.0,
+                            max=30.0,
+                        ),
+                        precipitation_total=AggregatedStat(
+                            min=1.0,
+                            avg=2.0,
+                            max=3.0,
+                        ),
+                        condition="sunny",
+                    )
+                ],
+            )
+
+        with patch(
+            "app.api.weather.obtain_aggregated_weather_forecast",
+            new=fake_obtain_aggregated_weather_forecast,
+        ):
+            response = client.get(
+                "/api/weather/aggregate/forecast",
+                params={
+                    "latitude": BARCELONA_LATITUDE,
+                    "longitude": BARCELONA_LONGITUDE,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["days"], 7)
+        self.assertEqual(
+            response.json()["providers_used"],
+            ["google_weather", "open_meteo", "weather_api"],
+        )
+        self.assertEqual(
+            response.json()["hourly_window"]["mode"],
+            "common_provider_overlap",
+        )
+        self.assertEqual(
+            response.json()["daily_window"],
+            {
+                "mode": "common_provider_overlap",
+                "start": "2026-07-12",
+                "end": "2026-07-12",
+            },
+        )
+        self.assertEqual(response.json()["hourly_forecast"][0]["condition"], "sunny")
+        self.assertEqual(response.json()["daily_forecast"][0]["condition"], "sunny")
+
     def test_get_forecast_returns_normalized_payload(self) -> None:
         async def fake_obtain_open_meteo_forecast(
             latitude: float,
