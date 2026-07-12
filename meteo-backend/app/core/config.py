@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     app_name: str = "MeteoFusion API"
     environment: str = "development"
 
+    google_weather_api_key: Optional[str] = None
     weather_api_key: Optional[str] = None
     openweather_api_key: Optional[str] = None
 

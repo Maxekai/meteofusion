@@ -6,8 +6,8 @@ from app.core.config import get_settings
 from app.providers.exceptions import WeatherProviderError
 
 
-WEATHER_API_URL = "https://api.weatherapi.com/v1/forecast"
-
+WEATHER_API_URL = "https://api.weatherapi.com/v1/forecast.json"
+# OJO REVISAR QUE ESTÉ BIEN... MIRAR CON EL CODEX Y TODO 
 
 async def fetch_weather_api(
     latitude: float,
@@ -15,11 +15,17 @@ async def fetch_weather_api(
     days: int,
 ) -> dict[str, Any]:
     settings = get_settings()
+    if not settings.weather_api_key:
+        raise WeatherProviderError(
+            "WeatherAPI no esta configurado. Define WEATHER_API_KEY."
+        )
+
     params = {
-        "q": f"{str(latitude)}, {str(longitude)}",
+        "key": settings.weather_api_key,
+        "q": f"{latitude},{longitude}",
         "days": days,
         "aqi": "no",
-        "alerts": "no"
+        "alerts": "no",
     }
 
     timeout = httpx.Timeout(settings.http_timeout_seconds)

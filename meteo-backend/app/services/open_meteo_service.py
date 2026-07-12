@@ -62,7 +62,7 @@ def normalize_open_meteo(data: dict[str, Any]) -> ProviderForecast:
         forecast=points,
     )
 
-async def obtain_weather_forecast(
+async def obtain_open_meteo_forecast(
     latitude: float,
     longitude: float,
     days: int,

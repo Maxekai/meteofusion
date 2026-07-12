@@ -4,17 +4,28 @@ from app.models.weather import ForecastPoint, ProviderForecast
 from app.providers.weather_api import fetch_weather_api
 
 
-def calculate_total_precipitation_chance(rain, snow):
-    if rain == None or snow == None:
+def _to_float(value: Any) -> float | None:
+    if value is None:
         return None
-    
-    return min(rain + snow, 100)  # In case it exceeds 100 due to rounding errors, we only take 100.
+
+    return float(value)
+
+
+def calculate_total_precipitation_chance(rain: Any, snow: Any) -> float | None:
+    rain_value = _to_float(rain)
+    snow_value = _to_float(snow)
+
+    if rain_value is None or snow_value is None:
+        return None
+
+    return min(rain_value + snow_value, 100.0)
 
 
 def normalize_weather_api(data: dict[str, Any]) -> ProviderForecast:
+    location = data.get("location", {})
     daily_forecast = data.get("forecast", {}).get("forecastday", [])
-    hourly = [hour for day in daily_forecast for hour in day["hour"]]
-    
+    hourly = [hour for day in daily_forecast for hour in day.get("hour", [])]
+
     points: list[ForecastPoint] = []
 
     for hour in hourly:
@@ -23,28 +34,28 @@ def normalize_weather_api(data: dict[str, Any]) -> ProviderForecast:
                 datetime=hour.get("time"),
                 temperature_c=hour.get("temp_c"),
                 humidity_percent=hour.get("humidity"),
-                precipitation_probability=calculate_total_precipitation_chance(hour.get("chance_of_rain"), hour.get("chance_of_snow")),
-                cloud_cover = hour.get("cloud"),
+                precipitation_probability=calculate_total_precipitation_chance(
+                    hour.get("chance_of_rain"),
+                    hour.get("chance_of_snow"),
+                ),
+                cloud_cover=hour.get("cloud"),
                 wind_speed_kmh=hour.get("wind_kph"),
                 dew_point_c=hour.get("dewpoint_c"),
                 precipitation_total=hour.get("precip_mm"),
                 precipitation_snow=hour.get("snow_cm"),
-                apparent_temperature_c=hour.get("feelslike_c")
+                apparent_temperature_c=hour.get("feelslike_c"),
             )
         )
 
     return ProviderForecast(
-        provider="open_meteo",
-        latitude=data["latitude"],
-        longitude=data["longitude"],
-        timezone=data["timezone"],
+        provider="weather_api",
+        latitude=location["lat"],
+        longitude=location["lon"],
+        timezone=location["tz_id"],
         forecast=points,
     )
-    
 
-    
-
-async def obtain_weather_forecast(
+async def obtain_weather_api_forecast(
     latitude: float,
     longitude: float,
     days: int,
