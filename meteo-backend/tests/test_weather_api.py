@@ -27,6 +27,110 @@ RUN_REAL_OPEN_METEO_TESTS = os.getenv("RUN_REAL_OPEN_METEO_TESTS") in {
 
 
 class WeatherApiTestCase(unittest.TestCase):
+    def test_post_aggregated_forecast_accepts_selected_location(self) -> None:
+        async def fake_obtain_aggregated_weather_forecast(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> AggregatedForecast:
+            self.assertEqual(latitude, BARCELONA_LATITUDE)
+            self.assertEqual(longitude, BARCELONA_LONGITUDE)
+            self.assertEqual(days, 7)
+            return AggregatedForecast(
+                latitude=latitude,
+                longitude=longitude,
+                timezone="Europe/Madrid",
+                days=days,
+                providers_requested=[
+                    "google_weather",
+                    "open_meteo",
+                    "weather_api",
+                ],
+                providers_used=[
+                    "google_weather",
+                    "open_meteo",
+                    "weather_api",
+                ],
+                warnings=[],
+                hourly_window=AggregationWindow(
+                    mode="common_provider_overlap",
+                    start="2026-07-12T09:00:00",
+                    end="2026-07-18T23:00:00",
+                ),
+                daily_window=DailyAggregationWindow(
+                    mode="common_provider_overlap",
+                    start="2026-07-12",
+                    end="2026-07-18",
+                ),
+                hourly_forecast=[],
+                daily_forecast=[],
+            )
+
+        with patch(
+            "app.api.weather.obtain_aggregated_weather_forecast",
+            new=fake_obtain_aggregated_weather_forecast,
+        ):
+            response = client.post(
+                "/api/weather/aggregate/forecast",
+                json={
+                    "location": {
+                        "id": "open_meteo:3128760",
+                        "name": "Barcelona",
+                        "display_name": "Barcelona, Catalunya, España",
+                        "latitude": BARCELONA_LATITUDE,
+                        "longitude": BARCELONA_LONGITUDE,
+                        "timezone": "Europe/Madrid",
+                    },
+                    "days": 7,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["timezone"], "Europe/Madrid")
+        self.assertEqual(
+            response.json()["hourly_window"]["mode"],
+            "common_provider_overlap",
+        )
+
+    def test_post_forecast_accepts_selected_location(self) -> None:
+        async def fake_obtain_open_meteo_forecast(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            self.assertEqual(latitude, BARCELONA_LATITUDE)
+            self.assertEqual(longitude, BARCELONA_LONGITUDE)
+            self.assertEqual(days, 3)
+            return ProviderForecast(
+                provider="open_meteo",
+                latitude=latitude,
+                longitude=longitude,
+                timezone="Europe/Madrid",
+                forecast=[],
+            )
+
+        with patch(
+            "app.api.weather.obtain_open_meteo_forecast",
+            new=fake_obtain_open_meteo_forecast,
+        ):
+            response = client.post(
+                "/api/weather/open_meteo/forecast",
+                json={
+                    "location": {
+                        "id": "open_meteo:3128760",
+                        "name": "Barcelona",
+                        "display_name": "Barcelona, Catalunya, España",
+                        "latitude": BARCELONA_LATITUDE,
+                        "longitude": BARCELONA_LONGITUDE,
+                        "timezone": "Europe/Madrid",
+                    },
+                    "days": 3,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["provider"], "open_meteo")
+
     def test_get_aggregated_forecast_returns_consensus_payload(self) -> None:
         async def fake_obtain_aggregated_weather_forecast(
             latitude: float,

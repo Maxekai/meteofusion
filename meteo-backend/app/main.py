@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.locations import router as locations_router
 from app.api.weather import router as weather_router
 from app.core.config import get_settings
 
@@ -18,8 +19,9 @@ app.add_middleware(
         "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
+app.include_router(locations_router)
 app.include_router(weather_router)

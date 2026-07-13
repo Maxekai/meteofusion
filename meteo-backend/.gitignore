@@ -17,3 +17,10 @@ __pycache__/
 # Operating system
 .DS_Store
 Thumbs.db
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/test-results/
+frontend/playwright-report/
