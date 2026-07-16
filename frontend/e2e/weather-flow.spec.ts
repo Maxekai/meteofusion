@@ -180,7 +180,6 @@ test("permite elegir una ciudad homónima y cambiar el día mostrado", async ({ 
   await expect(page.getByRole("columnheader", { name: "Nieve (cm) mín. media máx." })).toBeVisible();
   await expect(page.locator(".hour-metric--snow").first()).toContainText("0");
   await expect(page.locator(".hour-expand")).toHaveCount(0);
-  await expect(page.getByText("Punto de rocío")).toHaveCount(0);
 
   const secondaryTextSizes = await page
     .locator(".day-temperature-label, .metric-column-header small, .probability-gauge small")

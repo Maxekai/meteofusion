@@ -26,7 +26,6 @@ async def fetch_open_meteo(
             "precipitation_probability",
             "cloud_cover",
             "wind_speed_10m",
-            "dew_point_2m",
             "apparent_temperature",
             "precipitation",
             "snowfall",

@@ -23,8 +23,6 @@ def _build_provider_forecast(
     second_hour_humidity: float,
     first_hour_wind: float,
     second_hour_wind: float,
-    first_hour_dew_point: float,
-    second_hour_dew_point: float,
     first_hour_apparent_temperature: float,
     second_hour_apparent_temperature: float,
 ) -> ProviderForecast:
@@ -43,7 +41,6 @@ def _build_provider_forecast(
                 precipitation_snow=0.0,
                 cloud_cover=first_hour_cloud_cover,
                 wind_speed_kmh=first_hour_wind,
-                dew_point_c=first_hour_dew_point,
                 apparent_temperature_c=first_hour_apparent_temperature,
             ),
             ForecastPoint(
@@ -55,7 +52,6 @@ def _build_provider_forecast(
                 precipitation_snow=0.0,
                 cloud_cover=second_hour_cloud_cover,
                 wind_speed_kmh=second_hour_wind,
-                dew_point_c=second_hour_dew_point,
                 apparent_temperature_c=second_hour_apparent_temperature,
             ),
         ],
@@ -86,7 +82,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                         precipitation_snow=0.0,
                         cloud_cover=10.0,
                         wind_speed_kmh=12.0,
-                        dew_point_c=18.0,
                         apparent_temperature_c=31.0,
                     ),
                     ForecastPoint(
@@ -98,7 +93,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                         precipitation_snow=0.0,
                         cloud_cover=5.0,
                         wind_speed_kmh=13.0,
-                        dew_point_c=18.5,
                         apparent_temperature_c=32.0,
                     ),
                 ],
@@ -124,7 +118,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                         precipitation_snow=0.0,
                         cloud_cover=60.0,
                         wind_speed_kmh=5.0,
-                        dew_point_c=20.0,
                         apparent_temperature_c=26.0,
                     ),
                     ForecastPoint(
@@ -136,7 +129,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                         precipitation_snow=0.0,
                         cloud_cover=20.0,
                         wind_speed_kmh=10.0,
-                        dew_point_c=18.0,
                         apparent_temperature_c=30.0,
                     ),
                     ForecastPoint(
@@ -148,7 +140,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                         precipitation_snow=0.0,
                         cloud_cover=15.0,
                         wind_speed_kmh=11.0,
-                        dew_point_c=18.5,
                         apparent_temperature_c=31.0,
                     ),
                 ],
@@ -174,7 +165,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                         precipitation_snow=0.0,
                         cloud_cover=55.0,
                         wind_speed_kmh=6.0,
-                        dew_point_c=20.5,
                         apparent_temperature_c=26.5,
                     ),
                     ForecastPoint(
@@ -186,7 +176,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                         precipitation_snow=0.0,
                         cloud_cover=18.0,
                         wind_speed_kmh=11.0,
-                        dew_point_c=18.0,
                         apparent_temperature_c=31.0,
                     ),
                     ForecastPoint(
@@ -198,7 +187,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                         precipitation_snow=0.0,
                         cloud_cover=10.0,
                         wind_speed_kmh=12.0,
-                        dew_point_c=18.5,
                         apparent_temperature_c=32.0,
                     ),
                 ],
@@ -278,8 +266,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 second_hour_humidity=68.0,
                 first_hour_wind=6.0,
                 second_hour_wind=8.0,
-                first_hour_dew_point=11.0,
-                second_hour_dew_point=12.0,
                 first_hour_apparent_temperature=22.0,
                 second_hour_apparent_temperature=16.0,
             )
@@ -305,8 +291,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 second_hour_humidity=70.0,
                 first_hour_wind=5.0,
                 second_hour_wind=7.0,
-                first_hour_dew_point=12.0,
-                second_hour_dew_point=13.0,
                 first_hour_apparent_temperature=20.0,
                 second_hour_apparent_temperature=17.0,
             )
@@ -332,8 +316,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 second_hour_humidity=72.0,
                 first_hour_wind=4.0,
                 second_hour_wind=10.0,
-                first_hour_dew_point=10.0,
-                second_hour_dew_point=14.0,
                 first_hour_apparent_temperature=21.0,
                 second_hour_apparent_temperature=15.0,
             )
@@ -439,8 +421,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 second_hour_humidity=68.0,
                 first_hour_wind=6.0,
                 second_hour_wind=8.0,
-                first_hour_dew_point=11.0,
-                second_hour_dew_point=12.0,
                 first_hour_apparent_temperature=22.0,
                 second_hour_apparent_temperature=16.0,
             )
@@ -470,8 +450,6 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 second_hour_humidity=72.0,
                 first_hour_wind=4.0,
                 second_hour_wind=10.0,
-                first_hour_dew_point=10.0,
-                second_hour_dew_point=14.0,
                 first_hour_apparent_temperature=21.0,
                 second_hour_apparent_temperature=15.0,
             )

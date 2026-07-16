@@ -54,7 +54,6 @@ class WeatherApiProviderIntegrationTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(first_point.precipitation_probability, float)
         self.assertIsInstance(first_point.cloud_cover, float)
         self.assertIsInstance(first_point.wind_speed_kmh, float)
-        self.assertIsInstance(first_point.dew_point_c, float)
         self.assertIsInstance(first_point.precipitation_total, float)
         self.assertIsInstance(first_point.precipitation_snow, float)
         self.assertIsInstance(first_point.apparent_temperature_c, float)

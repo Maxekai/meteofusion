@@ -189,7 +189,6 @@ class WeatherApiTestCase(unittest.TestCase):
                         humidity_percent=55.0,
                         cloud_cover=25.0,
                         wind_speed_kmh=12.0,
-                        dew_point_c=14.0,
                         apparent_temperature_c=21.5,
                         condition="sunny",
                     )
@@ -273,7 +272,6 @@ class WeatherApiTestCase(unittest.TestCase):
                         precipitation_probability=10,
                         cloud_cover=42,
                         wind_speed_kmh=14.2,
-                        dew_point_c=18.4,
                         apparent_temperature_c=30.1,
                         precipitation_total=1.2,
                         precipitation_snow=0.0,
@@ -310,7 +308,6 @@ class WeatherApiTestCase(unittest.TestCase):
                         "precipitation_probability": 10.0,
                         "cloud_cover": 42.0,
                         "wind_speed_kmh": 14.2,
-                        "dew_point_c": 18.4,
                         "apparent_temperature_c": 30.1,
                         "precipitation_total": 1.2,
                         "precipitation_snow": 0.0,
@@ -341,7 +338,6 @@ class WeatherApiTestCase(unittest.TestCase):
                         precipitation_probability=15,
                         cloud_cover=35,
                         wind_speed_kmh=12.0,
-                        dew_point_c=18.0,
                         apparent_temperature_c=28.3,
                         precipitation_total=0.2,
                         precipitation_snow=0.0,
@@ -388,7 +384,6 @@ class WeatherApiTestCase(unittest.TestCase):
                         precipitation_probability=5,
                         cloud_cover=10,
                         wind_speed_kmh=9.0,
-                        dew_point_c=16.1,
                         apparent_temperature_c=30.0,
                         precipitation_total=0.0,
                         precipitation_snow=0.0,
@@ -445,7 +440,6 @@ class WeatherApiTestCase(unittest.TestCase):
         self.assertIsInstance(first_point["precipitation_probability"], (int, float))
         self.assertIsInstance(first_point["cloud_cover"], (int, float))
         self.assertIsInstance(first_point["wind_speed_kmh"], (int, float))
-        self.assertIsInstance(first_point["dew_point_c"], (int, float))
         self.assertIsInstance(first_point["apparent_temperature_c"], (int, float))
         self.assertIsInstance(first_point["precipitation_total"], (int, float))
         self.assertIsInstance(first_point["precipitation_snow"], (int, float))

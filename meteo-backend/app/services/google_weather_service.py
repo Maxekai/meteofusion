@@ -71,7 +71,6 @@ def normalize_google_weather(
                 ),
                 cloud_cover=hour.get("cloudCover"),
                 wind_speed_kmh=get_nested(hour, "wind", "speed", "value"),
-                dew_point_c=get_nested(hour, "dewPoint", "degrees"),
                 apparent_temperature_c=get_nested(
                     hour,
                     "feelsLikeTemperature",

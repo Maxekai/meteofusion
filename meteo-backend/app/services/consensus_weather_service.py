@@ -180,7 +180,6 @@ FORECAST_COLUMNS = [
     "humidity_percent",
     "cloud_cover",
     "wind_speed_kmh",
-    "dew_point_c",
     "apparent_temperature_c",
     "condition",
 ]
@@ -207,7 +206,6 @@ def _provider_forecasts_to_dataframe(
                     "humidity_percent": point.humidity_percent,
                     "cloud_cover": point.cloud_cover,
                     "wind_speed_kmh": point.wind_speed_kmh,
-                    "dew_point_c": point.dew_point_c,
                     "apparent_temperature_c": point.apparent_temperature_c,
                     "condition": _classify_condition(point),
                 }
@@ -243,7 +241,6 @@ def _aggregate_hourly(
                 humidity_percent=_build_mean(hourly_data["humidity_percent"]),
                 cloud_cover=_build_mean(hourly_data["cloud_cover"]),
                 wind_speed_kmh=_build_mean(hourly_data["wind_speed_kmh"]),
-                dew_point_c=_build_mean(hourly_data["dew_point_c"]),
                 apparent_temperature_c=_build_mean(
                     hourly_data["apparent_temperature_c"]
                 ),

@@ -13,7 +13,6 @@ class ForecastPoint(BaseModel):
     precipitation_snow: Optional[float] = Field(default=None, ge=0)
     cloud_cover: Optional[float] = Field(default=None, ge=0)
     wind_speed_kmh: Optional[float] = Field(default=None, ge=0)
-    dew_point_c: Optional[float] = Field(default=None)
     apparent_temperature_c: Optional[float] = Field(default=None)
 
 
@@ -41,7 +40,6 @@ class AggregatedHourlyForecastPoint(BaseModel):
     humidity_percent: Optional[float] = None
     cloud_cover: Optional[float] = None
     wind_speed_kmh: Optional[float] = None
-    dew_point_c: Optional[float] = None
     apparent_temperature_c: Optional[float] = None
     condition: str
 

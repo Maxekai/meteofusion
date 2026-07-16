@@ -40,7 +40,6 @@ def normalize_weather_api(data: dict[str, Any]) -> ProviderForecast:
                 ),
                 cloud_cover=hour.get("cloud"),
                 wind_speed_kmh=hour.get("wind_kph"),
-                dew_point_c=hour.get("dewpoint_c"),
                 precipitation_total=hour.get("precip_mm"),
                 precipitation_snow=hour.get("snow_cm"),
                 apparent_temperature_c=hour.get("feelslike_c"),
