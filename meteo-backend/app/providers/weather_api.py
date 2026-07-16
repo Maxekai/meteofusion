@@ -7,7 +7,7 @@ from app.providers.exceptions import WeatherProviderError
 
 
 WEATHER_API_URL = "https://api.weatherapi.com/v1/forecast.json"
-# OJO REVISAR QUE ESTÉ BIEN... MIRAR CON EL CODEX Y TODO 
+
 
 async def fetch_weather_api(
     latitude: float,
