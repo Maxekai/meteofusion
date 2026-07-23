@@ -1,0 +1,221 @@
+@startuml
+title MeteoFusion - Diagrama de clases del dominio
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam ClassBorderColor #334155
+skinparam ClassBackgroundColor #F8FAFC
+skinparam ArrowColor #475569
+skinparam packageStyle rectangle
+
+top to bottom direction
+
+package "Clases base" {
+  abstract class "Pydantic BaseModel" as BaseModel
+  abstract class "Pydantic BaseSettings" as BaseSettings
+  abstract class "Python Exception" as PythonException
+
+  BaseSettings --|> BaseModel
+}
+
+package "Localización" {
+  class SelectedLocation {
+    +id: Optional~str~
+    +name: Optional~str~
+    +display_name: Optional~str~
+    +latitude: float
+    +longitude: float
+    +timezone: str
+  }
+
+  class LocationCandidate {
+    +id: str
+    +provider: str
+    +provider_id: int
+    +name: str
+    +display_name: str
+    +latitude: float
+    +longitude: float
+    +timezone: str
+    +country: Optional~str~
+    +country_code: Optional~str~
+    +admin1: Optional~str~
+    +admin2: Optional~str~
+    +admin3: Optional~str~
+    +admin4: Optional~str~
+    +elevation: Optional~float~
+    +population: Optional~int~
+  }
+
+  class LocationSearchResponse {
+    +query: str
+    +count: int
+    +results: List~LocationCandidate~
+  }
+
+  class ForecastLocationRequest {
+    +location: SelectedLocation
+    +days: int = 7
+  }
+
+  class AggregatedForecastLocationRequest {
+    +location: SelectedLocation
+    +days: int = 7
+  }
+}
+
+package "Predicción de un proveedor" {
+  class ForecastPoint {
+    +datetime: datetime
+    +temperature_c: Optional~float~
+    +humidity_percent: Optional~float~
+    +precipitation_probability: Optional~float~
+    +precipitation_total: Optional~float~
+    +precipitation_snow: Optional~float~
+    +cloud_cover: Optional~float~
+    +wind_speed_kmh: Optional~float~
+    +apparent_temperature_c: Optional~float~
+  }
+
+  class ProviderForecast {
+    +provider: str
+    +latitude: float
+    +longitude: float
+    +timezone: str
+    +forecast: List~ForecastPoint~
+  }
+
+  enum WeatherProvider {
+    GOOGLE_WEATHER = "google_weather"
+    OPEN_METEO = "open_meteo"
+    WEATHER_API = "weather_api"
+  }
+}
+
+package "Predicción agregada" {
+  class AggregatedStat {
+    +min: Optional~float~
+    +avg: Optional~float~
+    +max: Optional~float~
+  }
+
+  class AggregatedHourlyForecastPoint {
+    +datetime: datetime
+    +provider_count: int
+    +temperature_c: AggregatedStat
+    +precipitation_probability: AggregatedStat
+    +precipitation_total: AggregatedStat
+    +precipitation_snow: AggregatedStat
+    +humidity_percent: Optional~float~
+    +cloud_cover: Optional~float~
+    +wind_speed_kmh: Optional~float~
+    +apparent_temperature_c: Optional~float~
+    +condition: str
+  }
+
+  class AggregatedDailyForecastPoint {
+    +date: date
+    +provider_count: int
+    +temperature_min_c: AggregatedStat
+    +temperature_max_c: AggregatedStat
+    +precipitation_total: AggregatedStat
+    +condition: str
+  }
+
+  class AggregationWindow {
+    +mode: str
+    +start: Optional~datetime~
+    +end: Optional~datetime~
+  }
+
+  class DailyAggregationWindow {
+    +mode: str
+    +start: Optional~date~
+    +end: Optional~date~
+  }
+
+  class AggregatedForecast {
+    +latitude: float
+    +longitude: float
+    +timezone: str
+    +days: int
+    +providers_requested: List~str~
+    +providers_used: List~str~
+    +provider_errors: Dict~str, str~
+    +warnings: List~str~
+    +hourly_forecast: List~AggregatedHourlyForecastPoint~
+    +daily_forecast: List~AggregatedDailyForecastPoint~
+  }
+
+  class HourlyWindowResult <<dataclass>> {
+    +provider_forecasts: List~ProviderForecast~
+    +mode: str
+    +start: Optional~datetime~
+    +end: Optional~datetime~
+  }
+}
+
+package "Configuración y errores" {
+  class Settings {
+    +app_name: str
+    +environment: str
+    +google_weather_api_key: Optional~str~
+    +weather_api_key: Optional~str~
+    +openweather_api_key: Optional~str~
+    +http_timeout_seconds: float
+  }
+
+  class WeatherProviderError
+  class LocationProviderError
+}
+
+' Herencia de modelos Pydantic
+SelectedLocation --|> BaseModel
+LocationCandidate --|> BaseModel
+LocationSearchResponse --|> BaseModel
+ForecastLocationRequest --|> BaseModel
+AggregatedForecastLocationRequest --|> BaseModel
+ForecastPoint --|> BaseModel
+ProviderForecast --|> BaseModel
+AggregatedStat --|> BaseModel
+AggregatedHourlyForecastPoint --|> BaseModel
+AggregatedDailyForecastPoint --|> BaseModel
+AggregationWindow --|> BaseModel
+DailyAggregationWindow --|> BaseModel
+AggregatedForecast --|> BaseModel
+Settings --|> BaseSettings
+
+' Herencia de excepciones
+WeatherProviderError --|> PythonException
+LocationProviderError --|> PythonException
+
+' Composiciones y asociaciones del dominio
+LocationSearchResponse "1" *-- "0..*" LocationCandidate : results
+ForecastLocationRequest "1" *-- "1" SelectedLocation : location
+AggregatedForecastLocationRequest "1" *-- "1" SelectedLocation : location
+
+ProviderForecast "1" *-- "0..*" ForecastPoint : forecast
+
+AggregatedHourlyForecastPoint "1" *-- "4" AggregatedStat : estadísticas
+AggregatedDailyForecastPoint "1" *-- "3" AggregatedStat : estadísticas
+
+AggregatedForecast "1" *-- "1" AggregationWindow : hourly_window
+AggregatedForecast "1" *-- "1" DailyAggregationWindow : daily_window
+AggregatedForecast "1" *-- "0..*" AggregatedHourlyForecastPoint : hourly_forecast
+AggregatedForecast "1" *-- "0..*" AggregatedDailyForecastPoint : daily_forecast
+
+HourlyWindowResult "1" o-- "0..*" ProviderForecast : provider_forecasts
+
+note right of WeatherProvider
+  Enumeración utilizada por el controlador
+  para seleccionar un proveedor concreto.
+end note
+
+note bottom of HourlyWindowResult
+  Clase auxiliar e inmutable empleada durante
+  el cálculo del intervalo temporal común.
+end note
+
+@enduml

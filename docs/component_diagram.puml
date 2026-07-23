@@ -1,0 +1,160 @@
+@startuml
+title MeteoFusion - Diagrama de despliegue
+
+left to right direction
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowFontSize 10
+skinparam NoteFontSize 11
+skinparam LegendFontSize 10
+
+skinparam linetype polyline
+skinparam nodesep 55
+skinparam ranksep 70
+
+skinparam ArrowColor #475569
+
+skinparam NodeBorderColor #334155
+skinparam NodeBackgroundColor #F8FAFC
+
+skinparam ArtifactBorderColor #0369A1
+skinparam ArtifactBackgroundColor #E0F2FE
+
+skinparam CloudBorderColor #64748B
+skinparam CloudBackgroundColor #F1F5F9
+
+
+' =========================================================
+' Dispositivo cliente
+' =========================================================
+
+node "Dispositivo del usuario" as clientDevice <<device>> {
+
+  node "Navegador web" as browser <<executionEnvironment>> {
+
+    artifact "SPA MeteoFusion\nReact + JavaScript + CSS" as spa
+  }
+}
+
+
+' =========================================================
+' Hosting del frontend
+' =========================================================
+
+node "Servidor web\nHosting estático" as frontendHost {
+
+  node "Servidor HTTP" as httpServer <<executionEnvironment>> {
+
+    artifact "Frontend compilado\nfrontend/dist" as frontendArtifact
+  }
+}
+
+
+' =========================================================
+' Servidor backend
+' =========================================================
+
+node "Servidor de aplicación" as backendHost {
+
+  node "Runtime Python" as pythonRuntime <<executionEnvironment>> {
+
+    artifact "MeteoFusion API\nFastAPI + Uvicorn" as backendArtifact
+
+    artifact "Servicios de consenso\ny normalización" as servicesArtifact
+
+    artifact "Librerías Python\nHTTPX + Pandas + Pydantic" as libraries
+  }
+
+  artifact "Variables de entorno\nclaves API · timeout · CORS" as environmentConfig
+}
+
+
+' =========================================================
+' Sistemas externos
+' =========================================================
+
+cloud "Servicios externos" as internet {
+
+  node "Open-Meteo" as geocodingHost <<externalSystem>> {
+    artifact "Geocoding API" as geocodingApi
+  }
+
+  node "Proveedor A" as providerAHost <<externalSystem>> {
+    artifact "API de predicción A" as providerAApi
+  }
+
+  node "Proveedor B" as providerBHost <<externalSystem>> {
+    artifact "API de predicción B" as providerBApi
+  }
+}
+
+
+' =========================================================
+' Restricciones invisibles de layout
+' =========================================================
+
+clientDevice -[hidden]right-> frontendHost
+frontendHost -[hidden]right-> backendHost
+backendHost -[hidden]right-> internet
+
+geocodingHost -[hidden]down-> providerAHost
+providerAHost -[hidden]down-> providerBHost
+
+
+' =========================================================
+' Comunicación de red
+' =========================================================
+
+browser --> frontendArtifact : HTTPS 443\nHTML · JS · CSS
+
+spa --> backendArtifact : HTTPS 443\nREST · JSON
+
+servicesArtifact --> geocodingApi : ubicaciones
+servicesArtifact --> providerAApi : predicción A
+servicesArtifact --> providerBApi : predicción B
+
+
+' =========================================================
+' Dependencias locales
+' =========================================================
+
+backendArtifact ..> servicesArtifact
+servicesArtifact ..> libraries
+
+environmentConfig ..> backendArtifact : configura
+
+
+' =========================================================
+' Notas breves
+' =========================================================
+
+note top of clientDevice
+  La SPA se descarga y se ejecuta
+  dentro del navegador del usuario.
+end note
+
+note top of frontendHost
+  Desarrollo: Vite en el puerto 5173.
+  Producción: hosting de archivos estáticos.
+end note
+
+note bottom of environmentConfig
+  Las credenciales permanecen en el backend.
+  No existe almacenamiento persistente.
+end note
+
+note top of internet
+  Todas las integraciones externas
+  utilizan HTTPS 443 y JSON.
+end note
+
+
+legend bottom
+  |= Línea |= Significado |
+  | continua | comunicación mediante red |
+  | discontinua | dependencia o configuración local |
+endlegend
+
+@enduml

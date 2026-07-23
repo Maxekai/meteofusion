@@ -1,0 +1,96 @@
+@startuml
+title MeteoFusion - Diagrama de despliegue
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam linetype ortho
+skinparam ArrowColor #475569
+skinparam NodeBorderColor #334155
+skinparam NodeBackgroundColor #F8FAFC
+skinparam ArtifactBorderColor #0369A1
+skinparam ArtifactBackgroundColor #E0F2FE
+skinparam CloudBorderColor #64748B
+skinparam CloudBackgroundColor #F1F5F9
+
+left to right direction
+
+device "Dispositivo del usuario" as clientDevice {
+  node "Navegador web\n<<entorno de ejecución>>" as browser {
+    artifact "SPA MeteoFusion\nReact + JavaScript + CSS" as spa
+  }
+}
+
+node "Servidor web / hosting estático" as frontendHost {
+  node "Servidor HTTP\n<<entorno de ejecución>>" as httpServer {
+    artifact "Aplicación frontend compilada\nfrontend/dist" as frontendArtifact
+  }
+}
+
+node "Servidor de aplicación" as backendHost {
+  node "Runtime Python\n<<entorno de ejecución>>" as pythonRuntime {
+    artifact "MeteoFusion API\nFastAPI + Uvicorn" as backendArtifact
+    artifact "Servicios de consenso\ny normalización" as servicesArtifact
+    artifact "Librerías Python\nHTTPX + Pandas + Pydantic" as libraries
+  }
+
+  artifact "Configuración del entorno\nclaves API + timeout + CORS" as environmentConfig
+}
+
+cloud "Internet" as internet {
+  node "Infraestructura Open-Meteo\n<<sistema externo>>" as geocodingHost {
+    artifact "Geocoding API" as geocodingApi
+  }
+
+  node "Infraestructura del Proveedor A\n<<sistema externo>>" as providerAHost {
+    artifact "API de predicción A" as providerAApi
+  }
+
+  node "Infraestructura del Proveedor B\n<<sistema externo>>" as providerBHost {
+    artifact "API de predicción B" as providerBApi
+  }
+}
+
+browser --> httpServer : HTTPS / TCP 443\nsolicita la aplicación
+frontendArtifact ..> spa : descarga y ejecución\nen el navegador
+
+spa --> backendArtifact : HTTPS / TCP 443\nREST + JSON
+
+backendArtifact ..> servicesArtifact : llamadas internas
+servicesArtifact ..> libraries : ejecución local
+environmentConfig ..> backendArtifact : configura
+
+servicesArtifact --> geocodingApi : HTTPS / TCP 443\nbúsqueda de ubicaciones
+servicesArtifact --> providerAApi : HTTPS / TCP 443\npredicción JSON
+servicesArtifact --> providerBApi : HTTPS / TCP 443\npredicción JSON
+
+note bottom of clientDevice
+  La interfaz React se ejecuta en el dispositivo
+  del usuario después de descargar los archivos
+  estáticos desde el servidor web.
+end note
+
+note bottom of backendHost
+  El backend conserva las credenciales de los
+  proveedores. Las claves nunca se envían al navegador.
+
+  No hay base de datos ni almacenamiento persistente:
+  las predicciones se consultan bajo demanda.
+end note
+
+note bottom of frontendHost
+  En desarrollo, Vite sirve el frontend mediante
+  HTTP en el puerto 5173. El backend se ejecuta con
+  Uvicorn en el puerto 8000. Ambos nodos pueden estar
+  alojados en el mismo ordenador durante el desarrollo.
+end note
+
+legend bottom
+  |= Elemento |= Significado |
+  | nodo tridimensional | dispositivo o entorno de ejecución |
+  | hoja azul | artefacto desplegado |
+  | nube | infraestructura externa fuera del control del sistema |
+  | flecha continua | comunicación a través de la red |
+  | flecha discontinua | despliegue, configuración o dependencia local |
+endlegend
+
+@enduml
