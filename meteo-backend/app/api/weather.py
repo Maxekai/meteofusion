@@ -8,14 +8,20 @@ from app.models.weather import AggregatedForecast, ProviderForecast
 from app.providers.exceptions import WeatherProviderError
 from app.services.consensus_weather_service import obtain_aggregated_weather_forecast
 from app.services.google_weather_service import obtain_google_weather_forecast
+from app.services.meteosource_service import obtain_meteosource_forecast
 from app.services.open_meteo_service import obtain_open_meteo_forecast
+from app.services.openweather_service import obtain_openweather_forecast
 from app.services.weather_api import obtain_weather_api_forecast
+from app.services.xweather_service import obtain_xweather_forecast
 
 
 class WeatherProvider(str, Enum):
     GOOGLE_WEATHER = "google_weather"
+    METEOSOURCE = "meteosource"
     OPEN_METEO = "open_meteo"
+    OPENWEATHER = "openweather"
     WEATHER_API = "weather_api"
+    XWEATHER = "xweather"
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])
 
@@ -23,8 +29,11 @@ router = APIRouter(prefix="/api/weather", tags=["weather"])
 def _get_provider_fetcher(provider: WeatherProvider):
     return {
         WeatherProvider.GOOGLE_WEATHER: obtain_google_weather_forecast,
+        WeatherProvider.METEOSOURCE: obtain_meteosource_forecast,
         WeatherProvider.OPEN_METEO: obtain_open_meteo_forecast,
+        WeatherProvider.OPENWEATHER: obtain_openweather_forecast,
         WeatherProvider.WEATHER_API: obtain_weather_api_forecast,
+        WeatherProvider.XWEATHER: obtain_xweather_forecast,
     }[provider]
 
 

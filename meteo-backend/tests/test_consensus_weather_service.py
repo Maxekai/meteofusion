@@ -1,7 +1,11 @@
 import unittest
 from unittest.mock import patch
 
-from app.models.weather import ForecastPoint, ProviderForecast
+from app.models.weather import (
+    ForecastPoint,
+    ProviderDailyForecastPoint,
+    ProviderForecast,
+)
 from app.providers.exceptions import WeatherProviderError
 from app.services.consensus_weather_service import obtain_aggregated_weather_forecast
 
@@ -59,7 +63,7 @@ def _build_provider_forecast(
 
 
 class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
-    async def test_obtain_aggregated_weather_forecast_uses_common_hour_overlap(
+    async def test_obtain_aggregated_weather_forecast_keeps_longer_provider_horizon(
         self,
     ) -> None:
         async def fake_google_weather(
@@ -145,6 +149,56 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 ],
             )
 
+        async def fake_meteosource(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            return ProviderForecast(
+                provider="meteosource",
+                latitude=latitude,
+                longitude=longitude,
+                timezone="Europe/Madrid",
+                forecast=[
+                    ForecastPoint(
+                        datetime="2026-07-12T09:00:00",
+                        temperature_c=29.5,
+                        humidity_percent=None,
+                        precipitation_probability=0.0,
+                        precipitation_total=0.0,
+                        precipitation_snow=0.0,
+                        cloud_cover=20.0,
+                        wind_speed_kmh=9.0,
+                        apparent_temperature_c=None,
+                    )
+                ],
+            )
+
+        async def fake_openweather(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            return ProviderForecast(
+                provider="openweather",
+                latitude=latitude,
+                longitude=longitude,
+                timezone="+02:00",
+                forecast=[
+                    ForecastPoint(
+                        datetime="2026-07-12T08:00:00Z",
+                        temperature_c=30.5,
+                        humidity_percent=51.0,
+                        precipitation_probability=0.0,
+                        precipitation_total=0.0,
+                        precipitation_snow=0.0,
+                        cloud_cover=12.0,
+                        wind_speed_kmh=11.5,
+                        apparent_temperature_c=31.5,
+                    )
+                ],
+            )
+
         async def fake_weather_api(
             latitude: float,
             longitude: float,
@@ -192,6 +246,14 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 ],
             )
 
+        async def fake_xweather(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            forecast = await fake_weather_api(latitude, longitude, days)
+            return forecast.model_copy(update={"provider": "xweather"})
+
         with patch(
             "app.services.consensus_weather_service.obtain_google_weather_forecast",
             new=fake_google_weather,
@@ -199,8 +261,17 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
             "app.services.consensus_weather_service.obtain_open_meteo_forecast",
             new=fake_open_meteo,
         ), patch(
+            "app.services.consensus_weather_service.obtain_meteosource_forecast",
+            new=fake_meteosource,
+        ), patch(
+            "app.services.consensus_weather_service.obtain_openweather_forecast",
+            new=fake_openweather,
+        ), patch(
             "app.services.consensus_weather_service.obtain_weather_api_forecast",
             new=fake_weather_api,
+        ), patch(
+            "app.services.consensus_weather_service.obtain_xweather_forecast",
+            new=fake_xweather,
         ):
             aggregated_forecast = await obtain_aggregated_weather_forecast(
                 latitude=BARCELONA_LATITUDE,
@@ -214,7 +285,7 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             aggregated_forecast.hourly_window.mode,
-            "common_provider_overlap",
+            "available_provider_union",
         )
         self.assertEqual(
             aggregated_forecast.hourly_window.start.isoformat(),
@@ -226,7 +297,7 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             aggregated_forecast.daily_window.mode,
-            "common_provider_overlap",
+            "available_provider_union",
         )
         self.assertEqual(
             aggregated_forecast.daily_window.start.isoformat(),
@@ -236,11 +307,15 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
             aggregated_forecast.daily_window.end.isoformat(),
             "2026-07-12",
         )
-        self.assertTrue(
-            all(point.provider_count == 3 for point in aggregated_forecast.hourly_forecast)
+        self.assertEqual(
+            [
+                point.provider_count
+                for point in aggregated_forecast.hourly_forecast
+            ],
+            [5, 5],
         )
         self.assertEqual(len(aggregated_forecast.daily_forecast), 1)
-        self.assertEqual(aggregated_forecast.daily_forecast[0].provider_count, 3)
+        self.assertEqual(aggregated_forecast.daily_forecast[0].provider_count, 6)
 
     async def test_obtain_aggregated_weather_forecast_computes_hourly_and_daily_stats(
         self,
@@ -295,6 +370,70 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 second_hour_apparent_temperature=17.0,
             )
 
+        async def fake_meteosource(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            self.assertEqual(latitude, BARCELONA_LATITUDE)
+            self.assertEqual(longitude, BARCELONA_LONGITUDE)
+            self.assertEqual(days, 7)
+            forecast = _build_provider_forecast(
+                provider="meteosource",
+                first_hour_temperature=21.0,
+                second_hour_temperature=17.0,
+                first_hour_probability=20.0,
+                second_hour_probability=80.0,
+                second_hour_precipitation=3.0,
+                first_hour_cloud_cover=20.0,
+                second_hour_cloud_cover=80.0,
+                first_hour_humidity=57.67,
+                second_hour_humidity=70.0,
+                first_hour_wind=5.0,
+                second_hour_wind=8.33,
+                first_hour_apparent_temperature=21.0,
+                second_hour_apparent_temperature=16.0,
+            )
+            return forecast.model_copy(
+                update={
+                    "daily_forecast": [
+                        ProviderDailyForecastPoint(
+                            date="2026-07-12",
+                            temperature_min_c=17.0,
+                            temperature_max_c=21.0,
+                            precipitation_total=3.0,
+                            precipitation_snow=0.0,
+                            cloud_cover=80.0,
+                        )
+                    ]
+                }
+            )
+
+        async def fake_openweather(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            self.assertEqual(latitude, BARCELONA_LATITUDE)
+            self.assertEqual(longitude, BARCELONA_LONGITUDE)
+            self.assertEqual(days, 7)
+            return _build_provider_forecast(
+                provider="openweather",
+                first_hour_temperature=21.0,
+                second_hour_temperature=17.0,
+                first_hour_probability=20.0,
+                second_hour_probability=80.0,
+                second_hour_precipitation=3.0,
+                first_hour_cloud_cover=20.0,
+                second_hour_cloud_cover=80.0,
+                first_hour_humidity=57.67,
+                second_hour_humidity=70.0,
+                first_hour_wind=5.0,
+                second_hour_wind=8.33,
+                first_hour_apparent_temperature=21.0,
+                second_hour_apparent_temperature=16.0,
+            )
+
         async def fake_weather_api(
             latitude: float,
             longitude: float,
@@ -320,6 +459,14 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 second_hour_apparent_temperature=15.0,
             )
 
+        async def fake_xweather(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            forecast = await fake_meteosource(latitude, longitude, days)
+            return forecast.model_copy(update={"provider": "xweather"})
+
         with patch(
             "app.services.consensus_weather_service.obtain_google_weather_forecast",
             new=fake_google_weather,
@@ -327,8 +474,17 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
             "app.services.consensus_weather_service.obtain_open_meteo_forecast",
             new=fake_open_meteo,
         ), patch(
+            "app.services.consensus_weather_service.obtain_meteosource_forecast",
+            new=fake_meteosource,
+        ), patch(
+            "app.services.consensus_weather_service.obtain_openweather_forecast",
+            new=fake_openweather,
+        ), patch(
             "app.services.consensus_weather_service.obtain_weather_api_forecast",
             new=fake_weather_api,
+        ), patch(
+            "app.services.consensus_weather_service.obtain_xweather_forecast",
+            new=fake_xweather,
         ):
             aggregated_forecast = await obtain_aggregated_weather_forecast(
                 latitude=BARCELONA_LATITUDE,
@@ -339,7 +495,14 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(aggregated_forecast.days, 7)
         self.assertEqual(
             aggregated_forecast.providers_used,
-            ["google_weather", "open_meteo", "weather_api"],
+            [
+                "google_weather",
+                "meteosource",
+                "open_meteo",
+                "openweather",
+                "weather_api",
+                "xweather",
+            ],
         )
         self.assertEqual(
             aggregated_forecast.hourly_window.mode,
@@ -432,6 +595,50 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
         ) -> ProviderForecast:
             raise WeatherProviderError("Open-Meteo fuera de servicio")
 
+        async def fake_meteosource(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            return _build_provider_forecast(
+                provider="meteosource",
+                first_hour_temperature=21.5,
+                second_hour_temperature=16.5,
+                first_hour_probability=0.0,
+                second_hour_probability=100.0,
+                second_hour_precipitation=3.0,
+                first_hour_cloud_cover=25.0,
+                second_hour_cloud_cover=85.0,
+                first_hour_humidity=56.0,
+                second_hour_humidity=70.0,
+                first_hour_wind=5.0,
+                second_hour_wind=9.0,
+                first_hour_apparent_temperature=21.5,
+                second_hour_apparent_temperature=15.5,
+            )
+
+        async def fake_openweather(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            return _build_provider_forecast(
+                provider="openweather",
+                first_hour_temperature=20.5,
+                second_hour_temperature=16.5,
+                first_hour_probability=10.0,
+                second_hour_probability=80.0,
+                second_hour_precipitation=3.5,
+                first_hour_cloud_cover=20.0,
+                second_hour_cloud_cover=90.0,
+                first_hour_humidity=57.0,
+                second_hour_humidity=71.0,
+                first_hour_wind=5.0,
+                second_hour_wind=9.5,
+                first_hour_apparent_temperature=20.5,
+                second_hour_apparent_temperature=15.5,
+            )
+
         async def fake_weather_api(
             latitude: float,
             longitude: float,
@@ -454,6 +661,14 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 second_hour_apparent_temperature=15.0,
             )
 
+        async def fake_xweather(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            forecast = await fake_openweather(latitude, longitude, days)
+            return forecast.model_copy(update={"provider": "xweather"})
+
         with patch(
             "app.services.consensus_weather_service.obtain_google_weather_forecast",
             new=fake_google_weather,
@@ -461,8 +676,17 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
             "app.services.consensus_weather_service.obtain_open_meteo_forecast",
             new=fake_open_meteo,
         ), patch(
+            "app.services.consensus_weather_service.obtain_meteosource_forecast",
+            new=fake_meteosource,
+        ), patch(
+            "app.services.consensus_weather_service.obtain_openweather_forecast",
+            new=fake_openweather,
+        ), patch(
             "app.services.consensus_weather_service.obtain_weather_api_forecast",
             new=fake_weather_api,
+        ), patch(
+            "app.services.consensus_weather_service.obtain_xweather_forecast",
+            new=fake_xweather,
         ):
             aggregated_forecast = await obtain_aggregated_weather_forecast(
                 latitude=BARCELONA_LATITUDE,
@@ -472,7 +696,13 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             aggregated_forecast.providers_used,
-            ["google_weather", "weather_api"],
+            [
+                "google_weather",
+                "meteosource",
+                "openweather",
+                "weather_api",
+                "xweather",
+            ],
         )
         self.assertEqual(
             aggregated_forecast.hourly_window.mode,

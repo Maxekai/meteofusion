@@ -16,12 +16,22 @@ class ForecastPoint(BaseModel):
     apparent_temperature_c: Optional[float] = Field(default=None)
 
 
+class ProviderDailyForecastPoint(BaseModel):
+    date: date
+    temperature_min_c: Optional[float] = None
+    temperature_max_c: Optional[float] = None
+    precipitation_total: Optional[float] = Field(default=None, ge=0)
+    precipitation_snow: Optional[float] = Field(default=None, ge=0)
+    cloud_cover: Optional[float] = Field(default=None, ge=0)
+
+
 class ProviderForecast(BaseModel):
     provider: str
     latitude: float
     longitude: float
     timezone: str
     forecast: list[ForecastPoint]
+    daily_forecast: list[ProviderDailyForecastPoint] = Field(default_factory=list)
 
 
 class AggregatedStat(BaseModel):

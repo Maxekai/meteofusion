@@ -16,12 +16,16 @@ from app.models.weather import (
     AggregationWindow,
     DailyAggregationWindow,
     ForecastPoint,
+    ProviderDailyForecastPoint,
     ProviderForecast,
 )
 from app.providers.exceptions import WeatherProviderError
 from app.services.google_weather_service import obtain_google_weather_forecast
+from app.services.meteosource_service import obtain_meteosource_forecast
 from app.services.open_meteo_service import obtain_open_meteo_forecast
+from app.services.openweather_service import obtain_openweather_forecast
 from app.services.weather_api import obtain_weather_api_forecast
+from app.services.xweather_service import obtain_xweather_forecast
 
 
 CONDITION_PRIORITY = {
@@ -49,8 +53,11 @@ def _get_provider_fetchers() -> dict[
 ]:
     return {
         "google_weather": obtain_google_weather_forecast,
+        "meteosource": obtain_meteosource_forecast,
         "open_meteo": obtain_open_meteo_forecast,
+        "openweather": obtain_openweather_forecast,
         "weather_api": obtain_weather_api_forecast,
+        "xweather": obtain_xweather_forecast,
     }
 
 
@@ -126,6 +133,29 @@ def _classify_condition(point: ForecastPoint) -> str:
         return "snow"
 
     if precipitation_amount > 0.1 or precipitation_probability >= 60.0:
+        return "rain"
+
+    if cloud_cover is None:
+        return "unknown"
+
+    if cloud_cover >= 70.0:
+        return "cloudy"
+
+    if cloud_cover >= 35.0:
+        return "partly_cloudy"
+
+    return "sunny"
+
+
+def _classify_daily_condition(point: ProviderDailyForecastPoint) -> str:
+    snow_amount = float(point.precipitation_snow or 0.0)
+    precipitation_amount = float(point.precipitation_total or 0.0)
+    cloud_cover = point.cloud_cover
+
+    if snow_amount > 0.0:
+        return "snow"
+
+    if precipitation_amount > 0.1:
         return "rain"
 
     if cloud_cover is None:
@@ -296,8 +326,17 @@ def _filter_to_common_hour_range(
 
     common_start = max(start for start, _ in provider_ranges)
     common_end = min(end for _, end in provider_ranges)
+    # Preserve the horizon while excluding tails backed by only a minority.
+    required_provider_count = len(provider_ranges) // 2 + 1
+    consensus_start = sorted(
+        start for start, _ in provider_ranges
+    )[required_provider_count - 1]
+    consensus_end = sorted(
+        (end for _, end in provider_ranges),
+        reverse=True,
+    )[required_provider_count - 1]
 
-    if common_start > common_end:
+    if consensus_start > consensus_end:
         return HourlyWindowResult(
             provider_forecasts=provider_forecasts,
             mode="available_provider_union",
@@ -305,18 +344,23 @@ def _filter_to_common_hour_range(
             end=max(end for _, end in provider_ranges),
         )
 
+    window_mode = (
+        "common_provider_overlap"
+        if common_start == consensus_start and common_end == consensus_end
+        else "available_provider_union"
+    )
     filtered_forecasts: list[ProviderForecast] = []
 
     for provider_forecast in provider_forecasts:
         filtered_points = [
             point
             for point in provider_forecast.forecast
-            if common_start
+            if consensus_start
             <= _normalize_datetime(
                 value=point.datetime,
                 timezone_name=provider_forecast.timezone,
             )
-            <= common_end
+            <= consensus_end
         ]
         filtered_forecasts.append(
             provider_forecast.model_copy(update={"forecast": filtered_points})
@@ -324,32 +368,70 @@ def _filter_to_common_hour_range(
 
     return HourlyWindowResult(
         provider_forecasts=filtered_forecasts,
-        mode="common_provider_overlap",
-        start=common_start,
-        end=common_end,
+        mode=window_mode,
+        start=consensus_start,
+        end=consensus_end,
     )
+
+
+DAILY_FORECAST_COLUMNS = [
+    "provider",
+    "date",
+    "temperature_min_c",
+    "temperature_max_c",
+    "precipitation_total",
+    "condition",
+]
+
+
+def _provider_forecasts_to_daily_dataframe(
+    provider_forecasts: list[ProviderForecast],
+) -> pd.DataFrame:
+    records: list[dict[str, object]] = []
+
+    for provider_forecast in provider_forecasts:
+        if provider_forecast.daily_forecast:
+            for point in provider_forecast.daily_forecast:
+                records.append(
+                    {
+                        "provider": provider_forecast.provider,
+                        "date": point.date,
+                        "temperature_min_c": point.temperature_min_c,
+                        "temperature_max_c": point.temperature_max_c,
+                        "precipitation_total": point.precipitation_total,
+                        "condition": _classify_daily_condition(point),
+                    }
+                )
+            continue
+
+        dataframe = _provider_forecasts_to_dataframe([provider_forecast])
+        if dataframe.empty:
+            continue
+
+        dataframe["date"] = dataframe["datetime"].dt.date
+        provider_daily = (
+            dataframe.groupby(["provider", "date"], as_index=False, sort=True)
+            .agg(
+                temperature_min_c=("temperature_c", "min"),
+                temperature_max_c=("temperature_c", "max"),
+                precipitation_total=(
+                    "precipitation_total",
+                    lambda values: values.sum(min_count=1),
+                ),
+                condition=("condition", _consensus_condition),
+            )
+        )
+        records.extend(provider_daily.to_dict(orient="records"))
+
+    return pd.DataFrame.from_records(records, columns=DAILY_FORECAST_COLUMNS)
 
 
 def _aggregate_daily(
     provider_forecasts: list[ProviderForecast],
 ) -> list[AggregatedDailyForecastPoint]:
-    dataframe = _provider_forecasts_to_dataframe(provider_forecasts)
-    if dataframe.empty:
+    provider_daily = _provider_forecasts_to_daily_dataframe(provider_forecasts)
+    if provider_daily.empty:
         return []
-
-    dataframe["date"] = dataframe["datetime"].dt.date
-    provider_daily = (
-        dataframe.groupby(["provider", "date"], as_index=False, sort=True)
-        .agg(
-            temperature_min_c=("temperature_c", "min"),
-            temperature_max_c=("temperature_c", "max"),
-            precipitation_total=(
-                "precipitation_total",
-                lambda values: values.sum(min_count=1),
-            ),
-            condition=("condition", _consensus_condition),
-        )
-    )
 
     aggregated_days: list[AggregatedDailyForecastPoint] = []
 
@@ -418,6 +500,7 @@ async def obtain_aggregated_weather_forecast(
             "No se ha podido obtener la prediccion de ningun proveedor."
         )
 
+    daily_forecast = _aggregate_daily(provider_forecasts)[:days]
     hourly_window = _filter_to_common_hour_range(provider_forecasts)
     provider_forecasts = hourly_window.provider_forecasts
 
@@ -427,8 +510,6 @@ async def obtain_aggregated_weather_forecast(
         warnings.append(
             "La agregacion se ha calculado con los proveedores disponibles."
         )
-
-    daily_forecast = _aggregate_daily(provider_forecasts)
 
     return AggregatedForecast(
         latitude=latitude,
