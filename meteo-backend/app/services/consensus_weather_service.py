@@ -37,6 +37,7 @@ CONDITION_PRIORITY = {
     "unknown": 0,
 }
 OFFSET_TIMEZONE_PATTERN = re.compile(r"^[+-]\d{2}:\d{2}$")
+HOURLY_CONSENSUS_PROVIDER_COUNT = 3
 
 
 @dataclass(frozen=True)
@@ -327,7 +328,10 @@ def _filter_to_common_hour_range(
     common_start = max(start for start, _ in provider_ranges)
     common_end = min(end for _, end in provider_ranges)
     # Preserve the horizon while excluding tails backed by only a minority.
-    required_provider_count = len(provider_ranges) // 2 + 1
+    required_provider_count = min(
+        HOURLY_CONSENSUS_PROVIDER_COUNT,
+        len(provider_ranges),
+    )
     consensus_start = sorted(
         start for start, _ in provider_ranges
     )[required_provider_count - 1]
@@ -390,38 +394,17 @@ def _provider_forecasts_to_daily_dataframe(
     records: list[dict[str, object]] = []
 
     for provider_forecast in provider_forecasts:
-        if provider_forecast.daily_forecast:
-            for point in provider_forecast.daily_forecast:
-                records.append(
-                    {
-                        "provider": provider_forecast.provider,
-                        "date": point.date,
-                        "temperature_min_c": point.temperature_min_c,
-                        "temperature_max_c": point.temperature_max_c,
-                        "precipitation_total": point.precipitation_total,
-                        "condition": _classify_daily_condition(point),
-                    }
-                )
-            continue
-
-        dataframe = _provider_forecasts_to_dataframe([provider_forecast])
-        if dataframe.empty:
-            continue
-
-        dataframe["date"] = dataframe["datetime"].dt.date
-        provider_daily = (
-            dataframe.groupby(["provider", "date"], as_index=False, sort=True)
-            .agg(
-                temperature_min_c=("temperature_c", "min"),
-                temperature_max_c=("temperature_c", "max"),
-                precipitation_total=(
-                    "precipitation_total",
-                    lambda values: values.sum(min_count=1),
-                ),
-                condition=("condition", _consensus_condition),
+        for point in provider_forecast.daily_forecast:
+            records.append(
+                {
+                    "provider": provider_forecast.provider,
+                    "date": point.date,
+                    "temperature_min_c": point.temperature_min_c,
+                    "temperature_max_c": point.temperature_max_c,
+                    "precipitation_total": point.precipitation_total,
+                    "condition": _classify_daily_condition(point),
+                }
             )
-        )
-        records.extend(provider_daily.to_dict(orient="records"))
 
     return pd.DataFrame.from_records(records, columns=DAILY_FORECAST_COLUMNS)
 

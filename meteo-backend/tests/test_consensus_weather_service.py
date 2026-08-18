@@ -59,6 +59,25 @@ def _build_provider_forecast(
                 apparent_temperature_c=second_hour_apparent_temperature,
             ),
         ],
+        daily_forecast=[
+            ProviderDailyForecastPoint(
+                date="2026-07-12",
+                temperature_min_c=min(
+                    first_hour_temperature,
+                    second_hour_temperature,
+                ),
+                temperature_max_c=max(
+                    first_hour_temperature,
+                    second_hour_temperature,
+                ),
+                precipitation_total=second_hour_precipitation,
+                precipitation_snow=0.0,
+                cloud_cover=max(
+                    first_hour_cloud_cover,
+                    second_hour_cloud_cover,
+                ),
+            )
+        ],
     )
 
 
@@ -281,7 +300,11 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             [point.datetime.isoformat() for point in aggregated_forecast.hourly_forecast],
-            ["2026-07-12T09:00:00", "2026-07-12T10:00:00"],
+            [
+                "2026-07-12T00:00:00",
+                "2026-07-12T09:00:00",
+                "2026-07-12T10:00:00",
+            ],
         )
         self.assertEqual(
             aggregated_forecast.hourly_window.mode,
@@ -289,7 +312,7 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             aggregated_forecast.hourly_window.start.isoformat(),
-            "2026-07-12T09:00:00",
+            "2026-07-12T00:00:00",
         )
         self.assertEqual(
             aggregated_forecast.hourly_window.end.isoformat(),
@@ -299,23 +322,16 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
             aggregated_forecast.daily_window.mode,
             "available_provider_union",
         )
-        self.assertEqual(
-            aggregated_forecast.daily_window.start.isoformat(),
-            "2026-07-12",
-        )
-        self.assertEqual(
-            aggregated_forecast.daily_window.end.isoformat(),
-            "2026-07-12",
-        )
+        self.assertIsNone(aggregated_forecast.daily_window.start)
+        self.assertIsNone(aggregated_forecast.daily_window.end)
         self.assertEqual(
             [
                 point.provider_count
                 for point in aggregated_forecast.hourly_forecast
             ],
-            [5, 5],
+            [3, 5, 5],
         )
-        self.assertEqual(len(aggregated_forecast.daily_forecast), 1)
-        self.assertEqual(aggregated_forecast.daily_forecast[0].provider_count, 6)
+        self.assertEqual(aggregated_forecast.daily_forecast, [])
 
     async def test_obtain_aggregated_weather_forecast_computes_hourly_and_daily_stats(
         self,

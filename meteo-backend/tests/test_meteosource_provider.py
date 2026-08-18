@@ -26,9 +26,9 @@ class MeteosourceNormalizationTestCase(unittest.TestCase):
             ("none", 0.0, None, 0.0),
             ("rain", 1.2, None, 0.0),
             ("snow", 2.5, None, 2.5),
-            ("rain_snow", 3.0, None, 3.0),
-            ("ice pellets", 0.8, None, 0.8),
-            ("frozen rain", 1.1, None, 1.1),
+            ("rain_snow", 3.0, None, None),
+            ("ice pellets", 0.8, None, 0.0),
+            ("frozen rain", 1.1, None, 0.0),
         ]
         hourly_data = []
 
@@ -141,7 +141,10 @@ class MeteosourceProviderIntegrationTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(first_point.cloud_cover, float)
         self.assertIsInstance(first_point.wind_speed_kmh, float)
         self.assertIsInstance(first_point.precipitation_total, float)
-        self.assertIsInstance(first_point.precipitation_snow, float)
+        self.assertTrue(
+            first_point.precipitation_snow is None
+            or isinstance(first_point.precipitation_snow, float)
+        )
 
 
 if __name__ == "__main__":

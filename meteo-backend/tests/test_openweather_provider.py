@@ -96,12 +96,14 @@ class OpenWeatherNormalizationTestCase(unittest.TestCase):
 
         self.assertEqual(first_point.temperature_c, 20.0)
         self.assertEqual(first_point.humidity_percent, 70.0)
-        self.assertEqual(first_point.precipitation_probability, 45.0)
-        self.assertEqual(first_point.precipitation_total, 3.2)
-        self.assertEqual(first_point.precipitation_snow, 0.2)
+        self.assertIsNone(first_point.precipitation_probability)
+        self.assertIsNone(first_point.precipitation_total)
+        self.assertIsNone(first_point.precipitation_snow)
         self.assertEqual(first_point.wind_speed_kmh, 7.2)
         self.assertEqual(first_point.apparent_temperature_c, 19.5)
-        self.assertEqual(third_point.precipitation_probability, 100.0)
+        self.assertIsNone(third_point.precipitation_probability)
+        self.assertIsNone(third_point.precipitation_total)
+        self.assertIsNone(third_point.precipitation_snow)
 
 
 class OpenWeatherProviderIntegrationTestCase(unittest.IsolatedAsyncioTestCase):
@@ -133,11 +135,11 @@ class OpenWeatherProviderIntegrationTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(first_point.datetime, datetime)
         self.assertIsInstance(first_point.temperature_c, float)
         self.assertIsInstance(first_point.humidity_percent, float)
-        self.assertIsInstance(first_point.precipitation_probability, float)
+        self.assertIsNone(first_point.precipitation_probability)
         self.assertIsInstance(first_point.cloud_cover, float)
         self.assertIsInstance(first_point.wind_speed_kmh, float)
-        self.assertIsInstance(first_point.precipitation_total, float)
-        self.assertIsInstance(first_point.precipitation_snow, float)
+        self.assertIsNone(first_point.precipitation_total)
+        self.assertIsNone(first_point.precipitation_snow)
         self.assertIsInstance(first_point.apparent_temperature_c, float)
 
 

@@ -531,6 +531,7 @@ class WeatherApiTestCase(unittest.TestCase):
         self.assertAlmostEqual(payload["longitude"], BARCELONA_LONGITUDE, delta=0.05)
         self.assertTrue(payload["timezone"])
         self.assertGreater(len(payload["forecast"]), 0)
+        self.assertGreater(len(payload["daily_forecast"]), 0)
 
         first_point = payload["forecast"][0]
 

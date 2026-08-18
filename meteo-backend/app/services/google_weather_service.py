@@ -1,7 +1,13 @@
+from datetime import date
 from typing import Any
 
-from app.models.weather import ForecastPoint, ProviderForecast
+from app.models.weather import (
+    ForecastPoint,
+    ProviderDailyForecastPoint,
+    ProviderForecast,
+)
 from app.providers.google_weather import fetch_google_weather
+from app.services.weather_units import snowfall_cm_from_swe_mm
 
 
 def get_nested(data: dict[str, Any], *keys: str) -> Any:
@@ -35,12 +41,45 @@ def extract_timezone(data: dict[str, Any]) -> str | None:
     return None
 
 
+def _display_date(value: Any) -> date | None:
+    if not isinstance(value, dict):
+        return None
+
+    try:
+        return date(
+            year=int(value["year"]),
+            month=int(value["month"]),
+            day=int(value["day"]),
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _sum_available(*values: Any) -> float | None:
+    numeric_values = [float(value) for value in values if value is not None]
+    return sum(numeric_values) if numeric_values else None
+
+
+def _mean_available(*values: Any) -> float | None:
+    numeric_values = [float(value) for value in values if value is not None]
+    return sum(numeric_values) / len(numeric_values) if numeric_values else None
+
+
+def _snow_qpf_to_cm(value: Any) -> float | None:
+    quantity = get_nested(value, "quantity")
+    if quantity is None:
+        return None
+
+    return snowfall_cm_from_swe_mm(float(quantity))
+
+
 def normalize_google_weather(
     data: dict[str, Any],
     latitude: float,
     longitude: float,
 ) -> ProviderForecast:
     forecast_hours = data.get("forecastHours", [])
+    forecast_days = data.get("forecastDays", [])
     timezone = extract_timezone(data)
 
     points: list[ForecastPoint] = []
@@ -63,11 +102,8 @@ def normalize_google_weather(
                     "qpf",
                     "quantity",
                 ),
-                precipitation_snow=get_nested(
-                    hour,
-                    "precipitation",
-                    "snowQpf",
-                    "quantity",
+                precipitation_snow=_snow_qpf_to_cm(
+                    get_nested(hour, "precipitation", "snowQpf"),
                 ),
                 cloud_cover=hour.get("cloudCover"),
                 wind_speed_kmh=get_nested(hour, "wind", "speed", "value"),
@@ -79,12 +115,54 @@ def normalize_google_weather(
             )
         )
 
+    daily_points: list[ProviderDailyForecastPoint] = []
+
+    for forecast_day in forecast_days:
+        forecast_date = _display_date(forecast_day.get("displayDate"))
+        if forecast_date is None:
+            continue
+
+        daytime = forecast_day.get("daytimeForecast", {})
+        nighttime = forecast_day.get("nighttimeForecast", {})
+        daily_points.append(
+            ProviderDailyForecastPoint(
+                date=forecast_date,
+                temperature_min_c=get_nested(
+                    forecast_day,
+                    "minTemperature",
+                    "degrees",
+                ),
+                temperature_max_c=get_nested(
+                    forecast_day,
+                    "maxTemperature",
+                    "degrees",
+                ),
+                precipitation_total=_sum_available(
+                    get_nested(daytime, "precipitation", "qpf", "quantity"),
+                    get_nested(nighttime, "precipitation", "qpf", "quantity"),
+                ),
+                precipitation_snow=_sum_available(
+                    _snow_qpf_to_cm(
+                        get_nested(daytime, "precipitation", "snowQpf"),
+                    ),
+                    _snow_qpf_to_cm(
+                        get_nested(nighttime, "precipitation", "snowQpf"),
+                    ),
+                ),
+                cloud_cover=_mean_available(
+                    daytime.get("cloudCover"),
+                    nighttime.get("cloudCover"),
+                ),
+            )
+        )
+
     return ProviderForecast(
         provider="google_weather",
         latitude=latitude,
         longitude=longitude,
         timezone=timezone or "UTC",
         forecast=points,
+        daily_forecast=daily_points,
     )
 
 

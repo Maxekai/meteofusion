@@ -30,6 +30,12 @@ async def fetch_open_meteo(
             "precipitation",
             "snowfall",
         ],
+        "daily": [
+            "temperature_2m_min",
+            "temperature_2m_max",
+            "precipitation_sum",
+            "snowfall_sum",
+        ],
     }
 
     timeout = httpx.Timeout(settings.http_timeout_seconds)

@@ -1,6 +1,10 @@
 from typing import Any
 
-from app.models.weather import ForecastPoint, ProviderForecast
+from app.models.weather import (
+    ForecastPoint,
+    ProviderDailyForecastPoint,
+    ProviderForecast,
+)
 from app.providers.weather_api import fetch_weather_api
 
 
@@ -46,12 +50,37 @@ def normalize_weather_api(data: dict[str, Any]) -> ProviderForecast:
             )
         )
 
+    daily_points: list[ProviderDailyForecastPoint] = []
+
+    for forecast_day in daily_forecast:
+        day = forecast_day.get("day", {})
+        cloud_values = [
+            float(hour["cloud"])
+            for hour in forecast_day.get("hour", [])
+            if hour.get("cloud") is not None
+        ]
+        daily_points.append(
+            ProviderDailyForecastPoint(
+                date=forecast_day.get("date"),
+                temperature_min_c=day.get("mintemp_c"),
+                temperature_max_c=day.get("maxtemp_c"),
+                precipitation_total=day.get("totalprecip_mm"),
+                precipitation_snow=day.get("totalsnow_cm"),
+                cloud_cover=(
+                    sum(cloud_values) / len(cloud_values)
+                    if cloud_values
+                    else None
+                ),
+            )
+        )
+
     return ProviderForecast(
         provider="weather_api",
         latitude=location["lat"],
         longitude=location["lon"],
         timezone=location["tz_id"],
         forecast=points,
+        daily_forecast=daily_points,
     )
 
 async def obtain_weather_api_forecast(

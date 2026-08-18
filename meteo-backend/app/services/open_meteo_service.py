@@ -1,11 +1,16 @@
 from typing import Any
 
-from app.models.weather import ForecastPoint, ProviderForecast
+from app.models.weather import (
+    ForecastPoint,
+    ProviderDailyForecastPoint,
+    ProviderForecast,
+)
 from app.providers.open_meteo import fetch_open_meteo
 
 
 def normalize_open_meteo(data: dict[str, Any]) -> ProviderForecast:
     hourly = data.get("hourly", {})
+    daily = data.get("daily", {})
 
     times = hourly.get("time", [])
     temperatures = hourly.get("temperature_2m", [])
@@ -50,12 +55,48 @@ def normalize_open_meteo(data: dict[str, Any]) -> ProviderForecast:
             )
         )
 
+    daily_times = daily.get("time", [])
+    daily_minimums = daily.get("temperature_2m_min", [])
+    daily_maximums = daily.get("temperature_2m_max", [])
+    daily_precipitation = daily.get("precipitation_sum", [])
+    daily_snowfall = daily.get("snowfall_sum", [])
+    daily_points: list[ProviderDailyForecastPoint] = []
+
+    for index, forecast_date in enumerate(daily_times):
+        day_clouds = [
+            float(cloud_cover)
+            for timestamp, cloud_cover in zip(times, clouds)
+            if str(timestamp).startswith(str(forecast_date))
+            and cloud_cover is not None
+        ]
+        daily_points.append(
+            ProviderDailyForecastPoint(
+                date=forecast_date,
+                temperature_min_c=daily_minimums[index]
+                if index < len(daily_minimums)
+                else None,
+                temperature_max_c=daily_maximums[index]
+                if index < len(daily_maximums)
+                else None,
+                precipitation_total=daily_precipitation[index]
+                if index < len(daily_precipitation)
+                else None,
+                precipitation_snow=daily_snowfall[index]
+                if index < len(daily_snowfall)
+                else None,
+                cloud_cover=(
+                    sum(day_clouds) / len(day_clouds) if day_clouds else None
+                ),
+            )
+        )
+
     return ProviderForecast(
         provider="open_meteo",
         latitude=data["latitude"],
         longitude=data["longitude"],
         timezone=data["timezone"],
         forecast=points,
+        daily_forecast=daily_points,
     )
 
 async def obtain_open_meteo_forecast(

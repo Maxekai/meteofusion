@@ -6,14 +6,9 @@ from app.models.weather import (
     ProviderForecast,
 )
 from app.providers.meteosource import fetch_meteosource
+from app.services.weather_units import snowfall_cm_from_swe_mm
 
 
-SNOW_PRECIPITATION_TYPES = {
-    "snow",
-    "rain_snow",
-    "ice pellets",
-    "frozen rain",
-}
 METERS_PER_SECOND_TO_KMH = 3.6
 
 
@@ -49,8 +44,13 @@ def _precipitation_values(data: dict[str, Any]) -> tuple[float | None, float | N
     if total is None:
         return None, None
 
-    # Frozen precipitation keeps the same numeric amount as total.
-    snow = total if normalized_type in SNOW_PRECIPITATION_TYPES else 0.0
+    if normalized_type == "snow":
+        snow = snowfall_cm_from_swe_mm(total)
+    elif normalized_type == "rain_snow":
+        snow = None
+    else:
+        snow = 0.0
+
     return total, snow
 
 

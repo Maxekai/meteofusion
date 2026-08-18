@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     meteosource_api_key: Optional[str] = None
     xweather_client_id: Optional[str] = None
     xweather_client_secret: Optional[str] = None
-    xweather_hourly_period_limit: int = 24
+    xweather_hourly_period_limit: int = 168
 
     http_timeout_seconds: float = 10.0
 

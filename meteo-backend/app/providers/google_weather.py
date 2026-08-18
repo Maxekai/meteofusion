@@ -7,6 +7,7 @@ from app.providers.exceptions import WeatherProviderError
 
 
 GOOGLE_WEATHER_URL = "https://weather.googleapis.com/v1/forecast/hours:lookup"
+GOOGLE_WEATHER_DAILY_URL = "https://weather.googleapis.com/v1/forecast/days:lookup"
 GOOGLE_WEATHER_MAX_DAYS = 10
 GOOGLE_WEATHER_MAX_HOURS = 240
 GOOGLE_WEATHER_PAGE_SIZE = 24
@@ -41,6 +42,7 @@ async def fetch_google_weather(
     timeout = httpx.Timeout(settings.http_timeout_seconds)
     aggregated_response: dict[str, Any] = {
         "forecastHours": [],
+        "forecastDays": [],
         "timeZone": None,
     }
 
@@ -70,6 +72,26 @@ async def fetch_google_weather(
 
                 if len(aggregated_response["forecastHours"]) >= total_hours:
                     break
+
+            daily_response = await client.get(
+                GOOGLE_WEATHER_DAILY_URL,
+                params={
+                    "key": settings.google_weather_api_key,
+                    "location.latitude": latitude,
+                    "location.longitude": longitude,
+                    "days": days,
+                    "pageSize": days,
+                    "unitsSystem": "METRIC",
+                },
+            )
+            daily_response.raise_for_status()
+            daily_payload = daily_response.json()
+            aggregated_response["forecastDays"] = daily_payload.get(
+                "forecastDays",
+                [],
+            )
+            if aggregated_response["timeZone"] is None:
+                aggregated_response["timeZone"] = daily_payload.get("timeZone")
 
         aggregated_response["forecastHours"] = aggregated_response["forecastHours"][
             :total_hours
