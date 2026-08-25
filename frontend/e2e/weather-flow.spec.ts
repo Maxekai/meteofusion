@@ -57,6 +57,17 @@ function stat(value: number, spread = 1) {
   };
 }
 
+function temperatureConsensus(value: number, spread = 1) {
+  return {
+    consensus_low: value - spread,
+    central: value,
+    consensus_high: value + spread,
+    provider_min: value - spread,
+    provider_max: value + spread,
+    sample_count: 3,
+  };
+}
+
 const dates = Array.from({ length: 7 }, (_, index) => {
   const date = new Date(Date.UTC(2026, 6, 13 + index));
   return date.toISOString().slice(0, 10);
@@ -65,8 +76,8 @@ const dates = Array.from({ length: 7 }, (_, index) => {
 const dailyForecast = dates.map((date, index) => ({
   date,
   provider_count: 3,
-  temperature_min_c: stat(19 + (index % 2)),
-  temperature_max_c: stat(28 + (index % 3)),
+  temperature_min_c: temperatureConsensus(19 + (index % 2)),
+  temperature_max_c: temperatureConsensus(28 + (index % 3)),
   precipitation_total: stat(index === 2 ? 1.2 : 0.2, 0.2),
   condition: conditions[index],
 }));
@@ -75,7 +86,7 @@ const hourlyForecast = dates.flatMap((date, dayIndex) =>
   [8, 12, 16, 20].map((hour, hourIndex) => ({
     datetime: `${date}T${String(hour).padStart(2, "0")}:00:00`,
     provider_count: 3,
-    temperature_c: stat(20 + dayIndex + hourIndex),
+    temperature_c: temperatureConsensus(20 + dayIndex + hourIndex),
     precipitation_probability: stat(dayIndex === 2 ? 55 : 12, 5),
     precipitation_total: stat(dayIndex === 2 ? 0.6 : 0.1, 0.1),
     precipitation_snow: stat(0, 0),
@@ -177,12 +188,25 @@ test("permite elegir una ciudad homónima y cambiar el día mostrado", async ({ 
   await expect(dailyPrecipitation.locator(".day-temperature-values > strong")).toHaveText("0,2");
   await expect(dailyPrecipitation.locator(".day-temperature-values > span").last()).toHaveText("0,4");
   await expect(page.locator(".hour-metric--precipitation").first()).toContainText("0,1");
+  await expect(page.getByRole("columnheader", { name: "Temperatura (°C) bajo consenso alto" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Nieve (cm) mín. media máx." })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Probabilidad" })).toHaveCSS(
+    "text-align",
+    "center",
+  );
+  await expect(page.getByRole("columnheader", { name: "Viento" })).toHaveCSS(
+    "text-align",
+    "center",
+  );
+  await expect(page.locator(".day-temperature--consensus").first()).not.toHaveAttribute(
+    "title",
+    /Rango total/,
+  );
   await expect(page.locator(".hour-metric--snow").first()).toContainText("0");
   await expect(page.locator(".hour-expand")).toHaveCount(0);
 
   const secondaryTextSizes = await page
-    .locator(".day-temperature-label, .metric-column-header small, .probability-gauge small")
+    .locator(".day-temperature-label, .day-temperature-scale, .metric-column-header small, .probability-gauge small")
     .evaluateAll((elements) => elements.map((element) => parseFloat(getComputedStyle(element).fontSize)));
   expect(Math.min(...secondaryTextSizes)).toBeGreaterThanOrEqual(10);
 

@@ -907,7 +907,7 @@ svg {
   white-space: nowrap;
 }
 
-.metric-value--avg {
+.metric-value--central {
   border-radius: 9px;
   background: var(--blue-soft);
   color: var(--blue-dark);
@@ -924,7 +924,7 @@ svg {
   font-size: 10px;
 }
 
-.metric-triplet--compact .metric-value--avg {
+.metric-triplet--compact .metric-value--central {
   border-radius: 7px;
 }
 
@@ -1631,7 +1631,7 @@ svg {
 }
 
 .day-card {
-  min-height: 315px;
+  min-height: 345px;
   padding: 10px 12px 9px;
   border-color: #d6e1ed;
   border-radius: 11px;
@@ -1728,6 +1728,38 @@ svg {
   gap: 3px;
 }
 
+.day-temperature-scale {
+  display: grid;
+  margin-top: 2px;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  gap: 3px;
+  color: #71839a;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.day-temperature-scale span:first-child {
+  text-align: left;
+}
+
+.day-temperature-scale span:last-child {
+  text-align: right;
+}
+
+.day-temperature-scale strong {
+  color: #315779;
+  font-weight: 800;
+}
+
+.day-temperature--blue .day-temperature-scale strong {
+  color: #086bdc;
+}
+
+.day-temperature--orange .day-temperature-scale strong {
+  color: #f04b0b;
+}
+
 .day-temperature-values span {
   color: #57708d;
   font-size: 14px;
@@ -1812,7 +1844,8 @@ svg {
   grid-template-columns:
     60px
     minmax(140px, 1.4fr)
-    repeat(3, minmax(126px, 1fr))
+    minmax(150px, 1fr)
+    repeat(2, minmax(126px, 1fr))
     minmax(190px, 1.3fr)
     minmax(80px, 0.65fr)
     minmax(75px, 0.6fr)
@@ -1836,6 +1869,11 @@ svg {
   background: #f7f9fc;
   color: #425a78;
   font-size: 14px;
+}
+
+.hourly-row--head > :nth-child(6),
+.hourly-row--head > :nth-child(9) {
+  text-align: center;
 }
 
 .metric-column-header {
@@ -1862,6 +1900,10 @@ svg {
 
 .metric-column-header small b {
   color: #0870df;
+}
+
+.metric-column-header--consensus small {
+  width: 142px;
 }
 
 .hour-time {
@@ -1892,11 +1934,15 @@ svg {
   font-size: 14px;
 }
 
-.hourly-row .metric-value--avg {
+.hourly-row .metric-value--central {
   background: transparent;
   color: #0870df;
   font-size: 20px;
   font-weight: 850;
+}
+
+.hour-metric--temperature .metric-triplet {
+  width: 142px;
 }
 
 .hour-inline-metric {

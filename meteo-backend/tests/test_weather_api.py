@@ -13,6 +13,7 @@ from app.models.weather import (
     DailyAggregationWindow,
     ForecastPoint,
     ProviderForecast,
+    TemperatureConsensusStat,
 )
 
 
@@ -170,7 +171,14 @@ class WeatherApiTestCase(unittest.TestCase):
                     AggregatedHourlyForecastPoint(
                         datetime="2026-07-12T10:00",
                         provider_count=3,
-                        temperature_c=AggregatedStat(min=20.0, avg=21.0, max=22.0),
+                        temperature_c=TemperatureConsensusStat(
+                            consensus_low=20.0,
+                            central=21.0,
+                            consensus_high=22.0,
+                            provider_min=20.0,
+                            provider_max=22.0,
+                            sample_count=3,
+                        ),
                         precipitation_probability=AggregatedStat(
                             min=5.0,
                             avg=10.0,
@@ -197,15 +205,21 @@ class WeatherApiTestCase(unittest.TestCase):
                     AggregatedDailyForecastPoint(
                         date="2026-07-12",
                         provider_count=3,
-                        temperature_min_c=AggregatedStat(
-                            min=16.0,
-                            avg=17.0,
-                            max=18.0,
+                        temperature_min_c=TemperatureConsensusStat(
+                            consensus_low=16.0,
+                            central=17.0,
+                            consensus_high=18.0,
+                            provider_min=16.0,
+                            provider_max=18.0,
+                            sample_count=3,
                         ),
-                        temperature_max_c=AggregatedStat(
-                            min=28.0,
-                            avg=29.0,
-                            max=30.0,
+                        temperature_max_c=TemperatureConsensusStat(
+                            consensus_low=28.0,
+                            central=29.0,
+                            consensus_high=30.0,
+                            provider_min=28.0,
+                            provider_max=30.0,
+                            sample_count=3,
                         ),
                         precipitation_total=AggregatedStat(
                             min=1.0,
@@ -249,6 +263,17 @@ class WeatherApiTestCase(unittest.TestCase):
         )
         self.assertEqual(response.json()["hourly_forecast"][0]["condition"], "sunny")
         self.assertEqual(response.json()["daily_forecast"][0]["condition"], "sunny")
+        self.assertEqual(
+            response.json()["hourly_forecast"][0]["temperature_c"],
+            {
+                "consensus_low": 20.0,
+                "central": 21.0,
+                "consensus_high": 22.0,
+                "provider_min": 20.0,
+                "provider_max": 22.0,
+                "sample_count": 3,
+            },
+        )
 
     def test_get_forecast_returns_normalized_payload(self) -> None:
         async def fake_obtain_open_meteo_forecast(

@@ -12,6 +12,15 @@ export interface AggregatedStat {
   max: number | null;
 }
 
+export interface TemperatureConsensusStat {
+  consensus_low: number | null;
+  central: number | null;
+  consensus_high: number | null;
+  provider_min: number | null;
+  provider_max: number | null;
+  sample_count: number;
+}
+
 export interface LocationCandidate {
   id: string;
   provider: string;
@@ -40,7 +49,7 @@ export interface LocationSearchResponse {
 export interface AggregatedHourlyForecastPoint {
   datetime: string;
   provider_count: number;
-  temperature_c: AggregatedStat;
+  temperature_c: TemperatureConsensusStat;
   precipitation_probability: AggregatedStat;
   precipitation_total: AggregatedStat;
   precipitation_snow: AggregatedStat;
@@ -54,8 +63,8 @@ export interface AggregatedHourlyForecastPoint {
 export interface AggregatedDailyForecastPoint {
   date: string;
   provider_count: number;
-  temperature_min_c: AggregatedStat;
-  temperature_max_c: AggregatedStat;
+  temperature_min_c: TemperatureConsensusStat;
+  temperature_max_c: TemperatureConsensusStat;
   precipitation_total: AggregatedStat;
   condition: WeatherCondition;
 }

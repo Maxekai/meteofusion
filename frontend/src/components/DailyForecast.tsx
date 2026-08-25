@@ -8,6 +8,7 @@ import {
 import type {
   AggregatedDailyForecastPoint,
   AggregatedStat,
+  TemperatureConsensusStat,
 } from "../types/weather";
 import { DropletIcon, ThermometerIcon } from "./Icons";
 import { WeatherIcon } from "./WeatherIcon";
@@ -22,7 +23,7 @@ interface DailyMetricProps {
   digits?: number;
   icon: "temperature" | "precipitation";
   label: string;
-  stat: AggregatedStat;
+  stat: AggregatedStat | TemperatureConsensusStat;
   tone: "blue" | "orange" | "precipitation";
   unit?: string;
 }
@@ -36,18 +37,33 @@ function DailyMetric({
   unit = "",
 }: DailyMetricProps) {
   const MetricIcon = icon === "temperature" ? ThermometerIcon : DropletIcon;
+  const isConsensus = "central" in stat;
+  const values = isConsensus
+    ? [stat.consensus_low, stat.central, stat.consensus_high]
+    : [stat.min, stat.avg, stat.max];
   const formatValue = (value: number | null) =>
     `${formatNumber(value, digits)}${value === null ? "" : unit}`;
 
   return (
-    <span className={`day-temperature day-temperature--${tone}`}>
+    <span
+      className={`day-temperature day-temperature--${tone} ${
+        isConsensus ? "day-temperature--consensus" : ""
+      }`}
+    >
       <span className="day-temperature-label">
         <MetricIcon /> {label}
       </span>
+      {isConsensus && (
+        <span className="day-temperature-scale">
+          <span>bajo</span>
+          <strong>consenso</strong>
+          <span>alto</span>
+        </span>
+      )}
       <span className="day-temperature-values">
-        <span>{formatValue(stat.min)}</span>
-        <strong>{formatValue(stat.avg)}</strong>
-        <span>{formatValue(stat.max)}</span>
+        <span>{formatValue(values[0])}</span>
+        <strong>{formatValue(values[1])}</strong>
+        <span>{formatValue(values[2])}</span>
       </span>
     </span>
   );

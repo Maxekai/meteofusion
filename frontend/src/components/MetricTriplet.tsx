@@ -1,8 +1,13 @@
 import { formatNumber } from "../lib/format";
-import type { AggregatedStat } from "../types/weather";
+import type {
+  AggregatedStat,
+  TemperatureConsensusStat,
+} from "../types/weather";
+
+type TripletStat = AggregatedStat | TemperatureConsensusStat;
 
 interface MetricTripletProps {
-  stat: AggregatedStat;
+  stat: TripletStat;
   unit?: string;
   digits?: number;
   compact?: boolean;
@@ -14,12 +19,26 @@ export function MetricTriplet({
   digits = 0,
   compact = false,
 }: MetricTripletProps) {
-  const values = [stat.min, stat.avg, stat.max];
+  const isConsensus = "central" in stat;
+  const values = isConsensus
+    ? [stat.consensus_low, stat.central, stat.consensus_high]
+    : [stat.min, stat.avg, stat.max];
 
   return (
-    <div className={`metric-triplet ${compact ? "metric-triplet--compact" : ""}`}>
+    <div
+      className={`metric-triplet ${
+        isConsensus ? "metric-triplet--consensus" : ""
+      } ${compact ? "metric-triplet--compact" : ""}`}
+    >
       {values.map((value, index) => (
-        <span className={index === 1 ? "metric-value metric-value--avg" : "metric-value"} key={index}>
+        <span
+          className={
+            index === 1
+              ? "metric-value metric-value--central"
+              : "metric-value"
+          }
+          key={index}
+        >
           {formatNumber(value, digits)}{value === null ? "" : unit}
         </span>
       ))}

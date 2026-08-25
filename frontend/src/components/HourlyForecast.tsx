@@ -18,14 +18,34 @@ interface HourlyForecastProps {
   hours: AggregatedHourlyForecastPoint[];
 }
 
-function MetricColumnHeader({ label }: { label: string }) {
+function MetricColumnHeader({
+  label,
+  variant = "aggregate",
+}: {
+  label: string;
+  variant?: "aggregate" | "consensus";
+}) {
+  const labels =
+    variant === "consensus"
+      ? ["bajo", "consenso", "alto"]
+      : ["mín.", "media", "máx."];
+
   return (
-    <span className="metric-column-header" role="columnheader">
+    <span
+      className={`metric-column-header metric-column-header--${variant}`}
+      role="columnheader"
+    >
       <strong>{label}</strong>
       <small>
-        <span>mín.</span>
-        <b>media</b>
-        <span>máx.</span>
+        <span>{labels[0]}</span>
+        <b
+          title={
+            variant === "consensus" ? "Mediana de los proveedores" : undefined
+          }
+        >
+          {labels[1]}
+        </b>
+        <span>{labels[2]}</span>
       </small>
     </span>
   );
@@ -102,7 +122,10 @@ export function HourlyForecast({ day, hours }: HourlyForecastProps) {
               <div className="hourly-row hourly-row--head" role="row">
                 <span role="columnheader">Hora</span>
                 <span role="columnheader">Tiempo</span>
-                <MetricColumnHeader label="Temperatura (°C)" />
+                <MetricColumnHeader
+                  label="Temperatura (°C)"
+                  variant="consensus"
+                />
                 <MetricColumnHeader label="Precipitación (mm)" />
                 <MetricColumnHeader label="Nieve (cm)" />
                 <span role="columnheader">Probabilidad</span>

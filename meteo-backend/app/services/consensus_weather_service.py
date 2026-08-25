@@ -18,6 +18,7 @@ from app.models.weather import (
     ForecastPoint,
     ProviderDailyForecastPoint,
     ProviderForecast,
+    TemperatureConsensusStat,
 )
 from app.providers.exceptions import WeatherProviderError
 from app.services.google_weather_service import obtain_google_weather_forecast
@@ -38,6 +39,10 @@ CONDITION_PRIORITY = {
 }
 OFFSET_TIMEZONE_PATTERN = re.compile(r"^[+-]\d{2}:\d{2}$")
 HOURLY_CONSENSUS_PROVIDER_COUNT = 3
+TEMPERATURE_CONSENSUS_MIN_SAMPLE_COUNT = 3
+TEMPERATURE_CONSENSUS_QUANTILE_SAMPLE_COUNT = 5
+TEMPERATURE_CONSENSUS_LOW_QUANTILE = 0.20
+TEMPERATURE_CONSENSUS_HIGH_QUANTILE = 0.80
 
 
 @dataclass(frozen=True)
@@ -78,6 +83,41 @@ def _build_stat(values: pd.Series) -> AggregatedStat:
         min=_round_value(float(numeric_values.min())),
         avg=_round_value(float(numeric_values.mean())),
         max=_round_value(float(numeric_values.max())),
+    )
+
+
+def _build_temperature_consensus(values: pd.Series) -> TemperatureConsensusStat:
+    """Use P20/median/P80 when the provider sample is large enough."""
+
+    numeric_values = pd.to_numeric(values, errors="coerce").dropna()
+    sample_count = len(numeric_values)
+    if sample_count == 0:
+        return TemperatureConsensusStat()
+
+    provider_min = float(numeric_values.min())
+    provider_max = float(numeric_values.max())
+    central = float(numeric_values.median())
+    consensus_low: float | None = None
+    consensus_high: float | None = None
+
+    if sample_count >= TEMPERATURE_CONSENSUS_QUANTILE_SAMPLE_COUNT:
+        consensus_low = float(
+            numeric_values.quantile(TEMPERATURE_CONSENSUS_LOW_QUANTILE)
+        )
+        consensus_high = float(
+            numeric_values.quantile(TEMPERATURE_CONSENSUS_HIGH_QUANTILE)
+        )
+    elif sample_count >= TEMPERATURE_CONSENSUS_MIN_SAMPLE_COUNT:
+        consensus_low = provider_min
+        consensus_high = provider_max
+
+    return TemperatureConsensusStat(
+        consensus_low=_round_value(consensus_low),
+        central=_round_value(central),
+        consensus_high=_round_value(consensus_high),
+        provider_min=_round_value(provider_min),
+        provider_max=_round_value(provider_max),
+        sample_count=sample_count,
     )
 
 
@@ -263,7 +303,9 @@ def _aggregate_hourly(
             AggregatedHourlyForecastPoint(
                 datetime=forecast_hour.to_pydatetime(),
                 provider_count=len(hourly_data),
-                temperature_c=_build_stat(hourly_data["temperature_c"]),
+                temperature_c=_build_temperature_consensus(
+                    hourly_data["temperature_c"]
+                ),
                 precipitation_probability=_build_stat(
                     hourly_data["precipitation_probability"]
                 ),
@@ -423,8 +465,12 @@ def _aggregate_daily(
             AggregatedDailyForecastPoint(
                 date=forecast_date,
                 provider_count=len(daily_data),
-                temperature_min_c=_build_stat(daily_data["temperature_min_c"]),
-                temperature_max_c=_build_stat(daily_data["temperature_max_c"]),
+                temperature_min_c=_build_temperature_consensus(
+                    daily_data["temperature_min_c"]
+                ),
+                temperature_max_c=_build_temperature_consensus(
+                    daily_data["temperature_max_c"]
+                ),
                 precipitation_total=_build_stat(daily_data["precipitation_total"]),
                 condition=_consensus_condition(daily_data["condition"]),
             )

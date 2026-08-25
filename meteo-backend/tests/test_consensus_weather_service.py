@@ -1,17 +1,56 @@
 import unittest
 from unittest.mock import patch
 
+import pandas as pd
+
 from app.models.weather import (
     ForecastPoint,
     ProviderDailyForecastPoint,
     ProviderForecast,
 )
 from app.providers.exceptions import WeatherProviderError
-from app.services.consensus_weather_service import obtain_aggregated_weather_forecast
+from app.services.consensus_weather_service import (
+    _build_temperature_consensus,
+    obtain_aggregated_weather_forecast,
+)
 
 
 BARCELONA_LATITUDE = 41.3874
 BARCELONA_LONGITUDE = 2.1686
+
+
+class TemperatureConsensusTestCase(unittest.TestCase):
+    def test_uses_percentiles_and_median_with_five_or_more_values(self) -> None:
+        consensus = _build_temperature_consensus(
+            pd.Series([20.0, 21.0, 21.0, 21.0, 21.0, 30.0])
+        )
+
+        self.assertEqual(consensus.consensus_low, 21.0)
+        self.assertEqual(consensus.central, 21.0)
+        self.assertEqual(consensus.consensus_high, 21.0)
+        self.assertEqual(consensus.provider_min, 20.0)
+        self.assertEqual(consensus.provider_max, 30.0)
+        self.assertEqual(consensus.sample_count, 6)
+
+    def test_uses_observed_range_with_three_or_four_values(self) -> None:
+        consensus = _build_temperature_consensus(
+            pd.Series([10.0, 11.0, 12.0, 20.0])
+        )
+
+        self.assertEqual(consensus.consensus_low, 10.0)
+        self.assertEqual(consensus.central, 11.5)
+        self.assertEqual(consensus.consensus_high, 20.0)
+        self.assertEqual(consensus.sample_count, 4)
+
+    def test_omits_consensus_bounds_with_fewer_than_three_values(self) -> None:
+        consensus = _build_temperature_consensus(pd.Series([10.0, 12.0]))
+
+        self.assertIsNone(consensus.consensus_low)
+        self.assertEqual(consensus.central, 11.0)
+        self.assertIsNone(consensus.consensus_high)
+        self.assertEqual(consensus.provider_min, 10.0)
+        self.assertEqual(consensus.provider_max, 12.0)
+        self.assertEqual(consensus.sample_count, 2)
 
 
 def _build_provider_forecast(
@@ -553,17 +592,23 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
         first_day = aggregated_forecast.daily_forecast[0]
 
         self.assertEqual(first_hour.condition, "sunny")
-        self.assertEqual(first_hour.temperature_c.min, 20.0)
-        self.assertEqual(first_hour.temperature_c.avg, 21.0)
-        self.assertEqual(first_hour.temperature_c.max, 22.0)
+        self.assertEqual(first_hour.temperature_c.consensus_low, 21.0)
+        self.assertEqual(first_hour.temperature_c.central, 21.0)
+        self.assertEqual(first_hour.temperature_c.consensus_high, 21.0)
+        self.assertEqual(first_hour.temperature_c.provider_min, 20.0)
+        self.assertEqual(first_hour.temperature_c.provider_max, 22.0)
+        self.assertEqual(first_hour.temperature_c.sample_count, 6)
         self.assertEqual(first_hour.precipitation_probability.avg, 20.0)
         self.assertEqual(first_hour.humidity_percent, 57.67)
         self.assertEqual(first_hour.wind_speed_kmh, 5.0)
 
         self.assertEqual(second_hour.condition, "rain")
-        self.assertEqual(second_hour.temperature_c.min, 16.0)
-        self.assertEqual(second_hour.temperature_c.avg, 17.0)
-        self.assertEqual(second_hour.temperature_c.max, 18.0)
+        self.assertEqual(second_hour.temperature_c.consensus_low, 17.0)
+        self.assertEqual(second_hour.temperature_c.central, 17.0)
+        self.assertEqual(second_hour.temperature_c.consensus_high, 17.0)
+        self.assertEqual(second_hour.temperature_c.provider_min, 16.0)
+        self.assertEqual(second_hour.temperature_c.provider_max, 18.0)
+        self.assertEqual(second_hour.temperature_c.sample_count, 6)
         self.assertEqual(second_hour.precipitation_probability.avg, 80.0)
         self.assertEqual(second_hour.precipitation_total.min, 2.0)
         self.assertEqual(second_hour.precipitation_total.avg, 3.0)
@@ -571,12 +616,16 @@ class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(str(first_day.date), "2026-07-12")
         self.assertEqual(first_day.condition, "rain")
-        self.assertEqual(first_day.temperature_min_c.min, 16.0)
-        self.assertEqual(first_day.temperature_min_c.avg, 17.0)
-        self.assertEqual(first_day.temperature_min_c.max, 18.0)
-        self.assertEqual(first_day.temperature_max_c.min, 20.0)
-        self.assertEqual(first_day.temperature_max_c.avg, 21.0)
-        self.assertEqual(first_day.temperature_max_c.max, 22.0)
+        self.assertEqual(first_day.temperature_min_c.consensus_low, 17.0)
+        self.assertEqual(first_day.temperature_min_c.central, 17.0)
+        self.assertEqual(first_day.temperature_min_c.consensus_high, 17.0)
+        self.assertEqual(first_day.temperature_min_c.provider_min, 16.0)
+        self.assertEqual(first_day.temperature_min_c.provider_max, 18.0)
+        self.assertEqual(first_day.temperature_max_c.consensus_low, 21.0)
+        self.assertEqual(first_day.temperature_max_c.central, 21.0)
+        self.assertEqual(first_day.temperature_max_c.consensus_high, 21.0)
+        self.assertEqual(first_day.temperature_max_c.provider_min, 20.0)
+        self.assertEqual(first_day.temperature_max_c.provider_max, 22.0)
         self.assertEqual(first_day.precipitation_total.min, 2.0)
         self.assertEqual(first_day.precipitation_total.avg, 3.0)
         self.assertEqual(first_day.precipitation_total.max, 4.0)

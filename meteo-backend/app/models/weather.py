@@ -40,10 +40,23 @@ class AggregatedStat(BaseModel):
     max: Optional[float] = None
 
 
+class TemperatureConsensusStat(BaseModel):
+    """Descriptive provider consensus, not a calibrated probability interval."""
+
+    consensus_low: Optional[float] = None
+    central: Optional[float] = None
+    consensus_high: Optional[float] = None
+    provider_min: Optional[float] = None
+    provider_max: Optional[float] = None
+    sample_count: int = Field(default=0, ge=0)
+
+
 class AggregatedHourlyForecastPoint(BaseModel):
     datetime: datetime
     provider_count: int = Field(ge=0)
-    temperature_c: AggregatedStat = Field(default_factory=AggregatedStat)
+    temperature_c: TemperatureConsensusStat = Field(
+        default_factory=TemperatureConsensusStat
+    )
     precipitation_probability: AggregatedStat = Field(default_factory=AggregatedStat)
     precipitation_total: AggregatedStat = Field(default_factory=AggregatedStat)
     precipitation_snow: AggregatedStat = Field(default_factory=AggregatedStat)
@@ -57,8 +70,12 @@ class AggregatedHourlyForecastPoint(BaseModel):
 class AggregatedDailyForecastPoint(BaseModel):
     date: date
     provider_count: int = Field(ge=0)
-    temperature_min_c: AggregatedStat = Field(default_factory=AggregatedStat)
-    temperature_max_c: AggregatedStat = Field(default_factory=AggregatedStat)
+    temperature_min_c: TemperatureConsensusStat = Field(
+        default_factory=TemperatureConsensusStat
+    )
+    temperature_max_c: TemperatureConsensusStat = Field(
+        default_factory=TemperatureConsensusStat
+    )
     precipitation_total: AggregatedStat = Field(default_factory=AggregatedStat)
     condition: str
 
