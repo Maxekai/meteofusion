@@ -166,14 +166,15 @@ def _normalize_datetime(value: datetime, timezone_name: str) -> datetime:
 
 def _classify_condition(point: ForecastPoint) -> str:
     snow_amount = float(point.precipitation_snow or 0.0)
+    temperature = float(point.temperature_c or 0.0)
     precipitation_amount = float(point.precipitation_total or 0.0)
     precipitation_probability = float(point.precipitation_probability or 0.0)
     cloud_cover = point.cloud_cover
 
-    if snow_amount > 0.0:
+    if snow_amount > 0.0 and temperature < 4.0:
         return "snow"
 
-    if precipitation_amount > 0.1 or precipitation_probability >= 60.0:
+    if (precipitation_amount > 0.1 or precipitation_probability >= 60.0) and temperature > -1.0:
         return "rain"
 
     if cloud_cover is None:
