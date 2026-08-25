@@ -24,7 +24,7 @@ from app.providers.exceptions import WeatherProviderError
 from app.services.google_weather_service import obtain_google_weather_forecast
 from app.services.meteosource_service import obtain_meteosource_forecast
 from app.services.open_meteo_service import obtain_open_meteo_forecast
-from app.services.openweather_service import obtain_openweather_forecast
+from app.services.visual_crossing_service import obtain_visual_crossing_forecast
 from app.services.weather_api import obtain_weather_api_forecast
 from app.services.xweather_service import obtain_xweather_forecast
 
@@ -61,7 +61,7 @@ def _get_provider_fetchers() -> dict[
         "google_weather": obtain_google_weather_forecast,
         "meteosource": obtain_meteosource_forecast,
         "open_meteo": obtain_open_meteo_forecast,
-        "openweather": obtain_openweather_forecast,
+        "visual_crossing": obtain_visual_crossing_forecast,
         "weather_api": obtain_weather_api_forecast,
         "xweather": obtain_xweather_forecast,
     }

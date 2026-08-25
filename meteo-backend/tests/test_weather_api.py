@@ -375,39 +375,6 @@ class WeatherApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["provider"], "meteosource")
 
-    def test_get_forecast_routes_to_openweather_provider(self) -> None:
-        async def fake_obtain_openweather_forecast(
-            latitude: float,
-            longitude: float,
-            days: int,
-        ) -> ProviderForecast:
-            self.assertEqual(latitude, BARCELONA_LATITUDE)
-            self.assertEqual(longitude, BARCELONA_LONGITUDE)
-            self.assertEqual(days, 5)
-            return ProviderForecast(
-                provider="openweather",
-                latitude=latitude,
-                longitude=longitude,
-                timezone="+02:00",
-                forecast=[],
-            )
-
-        with patch(
-            "app.api.weather.obtain_openweather_forecast",
-            new=fake_obtain_openweather_forecast,
-        ):
-            response = client.get(
-                "/api/weather/openweather/forecast",
-                params={
-                    "latitude": BARCELONA_LATITUDE,
-                    "longitude": BARCELONA_LONGITUDE,
-                    "days": 5,
-                },
-            )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["provider"], "openweather")
-
     def test_get_forecast_routes_to_xweather_provider(self) -> None:
         async def fake_obtain_xweather_forecast(
             latitude: float,
@@ -440,6 +407,39 @@ class WeatherApiTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["provider"], "xweather")
+
+    def test_get_forecast_routes_to_visual_crossing_provider(self) -> None:
+        async def fake_obtain_visual_crossing_forecast(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            self.assertEqual(latitude, BARCELONA_LATITUDE)
+            self.assertEqual(longitude, BARCELONA_LONGITUDE)
+            self.assertEqual(days, 7)
+            return ProviderForecast(
+                provider="visual_crossing",
+                latitude=latitude,
+                longitude=longitude,
+                timezone="Europe/Madrid",
+                forecast=[],
+            )
+
+        with patch(
+            "app.api.weather.obtain_visual_crossing_forecast",
+            new=fake_obtain_visual_crossing_forecast,
+        ):
+            response = client.get(
+                "/api/weather/visual_crossing/forecast",
+                params={
+                    "latitude": BARCELONA_LATITUDE,
+                    "longitude": BARCELONA_LONGITUDE,
+                    "days": 7,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["provider"], "visual_crossing")
 
     def test_get_forecast_routes_to_weather_api_provider(self) -> None:
         async def fake_obtain_weather_api_forecast(

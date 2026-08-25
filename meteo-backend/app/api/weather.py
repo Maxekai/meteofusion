@@ -10,7 +10,7 @@ from app.services.consensus_weather_service import obtain_aggregated_weather_for
 from app.services.google_weather_service import obtain_google_weather_forecast
 from app.services.meteosource_service import obtain_meteosource_forecast
 from app.services.open_meteo_service import obtain_open_meteo_forecast
-from app.services.openweather_service import obtain_openweather_forecast
+from app.services.visual_crossing_service import obtain_visual_crossing_forecast
 from app.services.weather_api import obtain_weather_api_forecast
 from app.services.xweather_service import obtain_xweather_forecast
 
@@ -19,7 +19,7 @@ class WeatherProvider(str, Enum):
     GOOGLE_WEATHER = "google_weather"
     METEOSOURCE = "meteosource"
     OPEN_METEO = "open_meteo"
-    OPENWEATHER = "openweather"
+    VISUAL_CROSSING = "visual_crossing"
     WEATHER_API = "weather_api"
     XWEATHER = "xweather"
 
@@ -31,7 +31,7 @@ def _get_provider_fetcher(provider: WeatherProvider):
         WeatherProvider.GOOGLE_WEATHER: obtain_google_weather_forecast,
         WeatherProvider.METEOSOURCE: obtain_meteosource_forecast,
         WeatherProvider.OPEN_METEO: obtain_open_meteo_forecast,
-        WeatherProvider.OPENWEATHER: obtain_openweather_forecast,
+        WeatherProvider.VISUAL_CROSSING: obtain_visual_crossing_forecast,
         WeatherProvider.WEATHER_API: obtain_weather_api_forecast,
         WeatherProvider.XWEATHER: obtain_xweather_forecast,
     }[provider]

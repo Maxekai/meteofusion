@@ -163,7 +163,6 @@ package "Configuración y errores" {
     +environment: str
     +google_weather_api_key: Optional~str~
     +weather_api_key: Optional~str~
-    +openweather_api_key: Optional~str~
     +http_timeout_seconds: float
   }
 

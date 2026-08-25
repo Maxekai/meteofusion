@@ -10,9 +10,9 @@ class Settings(BaseSettings):
 
     google_weather_api_key: Optional[str] = None
     weather_api_key: Optional[str] = None
-    openweather_api_key: Optional[str] = None
     openmeteo_api_key: Optional[str] = None
     meteosource_api_key: Optional[str] = None
+    visual_crossing_api_key: Optional[str] = None
     xweather_client_id: Optional[str] = None
     xweather_client_secret: Optional[str] = None
     xweather_hourly_period_limit: int = 168
