@@ -121,12 +121,12 @@ def _build_temperature_consensus(values: pd.Series) -> TemperatureConsensusStat:
     )
 
 
-def _build_mean(values: pd.Series) -> Optional[float]:
+def _build_median(values: pd.Series) -> Optional[float]:
     numeric_values = pd.to_numeric(values, errors="coerce").dropna()
     if numeric_values.empty:
         return None
 
-    return _round_value(float(numeric_values.mean()))
+    return _round_value(float(numeric_values.median()))
 
 
 def _parse_timezone(timezone_name: str) -> Optional[tzinfo]:
@@ -312,10 +312,10 @@ def _aggregate_hourly(
                 ),
                 precipitation_total=_build_stat(hourly_data["precipitation_total"]),
                 precipitation_snow=_build_stat(hourly_data["precipitation_snow"]),
-                humidity_percent=_build_mean(hourly_data["humidity_percent"]),
-                cloud_cover=_build_mean(hourly_data["cloud_cover"]),
-                wind_speed_kmh=_build_mean(hourly_data["wind_speed_kmh"]),
-                apparent_temperature_c=_build_mean(
+                humidity_percent=_build_median(hourly_data["humidity_percent"]),
+                cloud_cover=_build_median(hourly_data["cloud_cover"]),
+                wind_speed_kmh=_build_median(hourly_data["wind_speed_kmh"]),
+                apparent_temperature_c=_build_median(
                     hourly_data["apparent_temperature_c"]
                 ),
                 condition=_consensus_condition(hourly_data["condition"]),

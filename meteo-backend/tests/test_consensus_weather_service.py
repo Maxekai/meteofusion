@@ -10,6 +10,7 @@ from app.models.weather import (
 )
 from app.providers.exceptions import WeatherProviderError
 from app.services.consensus_weather_service import (
+    _aggregate_hourly,
     _build_temperature_consensus,
     obtain_aggregated_weather_forecast,
 )
@@ -51,6 +52,46 @@ class TemperatureConsensusTestCase(unittest.TestCase):
         self.assertEqual(consensus.provider_min, 10.0)
         self.assertEqual(consensus.provider_max, 12.0)
         self.assertEqual(consensus.sample_count, 2)
+
+
+class HourlyMedianAggregationTestCase(unittest.TestCase):
+    def test_uses_median_for_secondary_hourly_variables(self) -> None:
+        provider_values = [
+            (40.0, 10.0, 5.0, 10.0),
+            (50.0, 20.0, 6.0, 11.0),
+            (90.0, 90.0, 40.0, 30.0),
+        ]
+        provider_forecasts = [
+            ProviderForecast(
+                provider=f"provider_{index}",
+                latitude=BARCELONA_LATITUDE,
+                longitude=BARCELONA_LONGITUDE,
+                timezone="Europe/Madrid",
+                forecast=[
+                    ForecastPoint(
+                        datetime="2026-07-12T00:00:00",
+                        temperature_c=20.0,
+                        humidity_percent=humidity,
+                        cloud_cover=cloud_cover,
+                        wind_speed_kmh=wind_speed,
+                        apparent_temperature_c=apparent_temperature,
+                    )
+                ],
+            )
+            for index, (
+                humidity,
+                cloud_cover,
+                wind_speed,
+                apparent_temperature,
+            ) in enumerate(provider_values)
+        ]
+
+        aggregated_hour = _aggregate_hourly(provider_forecasts)[0]
+
+        self.assertEqual(aggregated_hour.humidity_percent, 50.0)
+        self.assertEqual(aggregated_hour.cloud_cover, 20.0)
+        self.assertEqual(aggregated_hour.wind_speed_kmh, 6.0)
+        self.assertEqual(aggregated_hour.apparent_temperature_c, 11.0)
 
 
 def _build_provider_forecast(
