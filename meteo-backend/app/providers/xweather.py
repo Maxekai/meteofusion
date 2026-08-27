@@ -9,6 +9,7 @@ from app.providers.exceptions import WeatherProviderError
 
 XWEATHER_FORECASTS_URL = "https://data.api.xweather.com/forecasts"
 XWEATHER_MAX_FORECAST_DAYS = 15
+XWEATHER_HOURLY_PERIOD_LIMIT = 168
 HOURS_PER_DAY = 24
 XWEATHER_HOURLY_FIELDS = ",".join(
     [
@@ -76,11 +77,10 @@ async def fetch_xweather(
         )
 
     requested_days = min(max(days, 1), XWEATHER_MAX_FORECAST_DAYS)
-    configured_hourly_limit = min(
-        max(settings.xweather_hourly_period_limit, 1),
-        XWEATHER_MAX_FORECAST_DAYS * HOURS_PER_DAY,
+    hourly_limit = min(
+        requested_days * HOURS_PER_DAY,
+        XWEATHER_HOURLY_PERIOD_LIMIT,
     )
-    hourly_limit = min(requested_days * HOURS_PER_DAY, configured_hourly_limit)
     location = f"{latitude},{longitude}"
     url = f"{XWEATHER_FORECASTS_URL}/{location}"
     common_params = {

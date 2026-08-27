@@ -6,7 +6,10 @@ from unittest.mock import patch
 
 from app.core.config import get_settings
 from app.models.weather import ProviderForecast
-from app.providers.xweather import fetch_xweather
+from app.providers.xweather import (
+    XWEATHER_HOURLY_PERIOD_LIMIT,
+    fetch_xweather,
+)
 from app.services.xweather_service import (
     normalize_xweather,
     obtain_xweather_forecast,
@@ -69,7 +72,6 @@ class XweatherClientTestCase(unittest.IsolatedAsyncioTestCase):
         fake_settings = SimpleNamespace(
             xweather_client_id="client-id",
             xweather_client_secret="client-secret",
-            xweather_hourly_period_limit=24,
             http_timeout_seconds=10.0,
         )
 
@@ -99,7 +101,10 @@ class XweatherClientTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIn("/forecasts/", hourly_url)
         self.assertNotIn("/conditions/", hourly_url)
         self.assertEqual(hourly_url, daily_url)
-        self.assertEqual(hourly_params["limit"], 24)
+        self.assertEqual(
+            hourly_params["limit"],
+            XWEATHER_HOURLY_PERIOD_LIMIT,
+        )
         self.assertEqual(daily_params["limit"], 7)
         self.assertEqual(hourly_params["client_id"], "client-id")
         self.assertEqual(hourly_params["client_secret"], "client-secret")
@@ -272,7 +277,7 @@ class XweatherProviderIntegrationTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(len(forecast.forecast), 0)
         self.assertLessEqual(
             len(forecast.forecast),
-            SETTINGS.xweather_hourly_period_limit,
+            XWEATHER_HOURLY_PERIOD_LIMIT,
         )
         self.assertGreater(len(forecast.daily_forecast), 0)
         self.assertLessEqual(len(forecast.daily_forecast), 7)
