@@ -168,6 +168,27 @@ function Results({
           </div>
         )}
 
+        <aside
+          aria-label="Aviso sobre la previsión"
+          className="disclaimer"
+          role="note"
+        >
+          <InfoIcon />
+          <div className="disclaimer-copy">
+            <strong>Previsión de carácter informativo</strong>
+            <p>
+              Los resultados agregan predicciones de proveedores externos y
+              pueden contener errores. No deben utilizarse como única fuente
+              para decisiones críticas relacionadas con emergencias,
+              navegación o protección civil.
+            </p>
+            <small>
+              La disponibilidad y calidad de los datos dependen de los
+              proveedores meteorológicos y de sus condiciones de servicio.
+            </small>
+          </div>
+        </aside>
+
       </main>
     </div>
   );

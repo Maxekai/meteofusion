@@ -158,7 +158,11 @@ test("permite elegir una ciudad homónima y cambiar el día mostrado", async ({ 
   await expect(page.locator(".location-banner")).not.toContainText("Europe/Madrid");
   await expect(page.locator(".location-banner-meta")).toContainText("41,39, 2,16");
   await expect(page.locator(".provider-availability")).toHaveCount(0);
-  await expect(page.locator(".disclaimer")).toHaveCount(0);
+  const disclaimer = page.getByRole("note", { name: "Aviso sobre la previsión" });
+  await expect(disclaimer).toBeVisible();
+  await expect(disclaimer).toContainText("Previsión de carácter informativo");
+  await expect(disclaimer).toContainText("emergencias, navegación o protección civil");
+  await expect(disclaimer).toContainText("proveedores externos");
   await expect(page.locator(".day-card-topline").first()).toContainText(/Lun\s*-\s*13 Jul/i);
   const [dayNameStyle, dayDateStyle] = await page
     .locator(".day-card-topline")

@@ -703,6 +703,42 @@ svg {
   color: #a33939;
 }
 
+.disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 15px 17px;
+  border: 1px solid #ccdae6;
+  border-radius: 12px;
+  background: rgba(247, 251, 255, 0.9);
+  color: #49647d;
+}
+
+.disclaimer > svg {
+  width: 20px;
+  flex: none;
+  margin-top: 1px;
+  color: var(--blue);
+}
+
+.disclaimer-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.disclaimer strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.disclaimer p,
+.disclaimer small {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .daily-section {
   padding: 24px 24px 20px;
   border: 1px solid var(--line);
