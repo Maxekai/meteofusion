@@ -10,6 +10,7 @@ from app.services.weather_units import snowfall_cm_from_swe_mm
 
 
 METERS_PER_SECOND_TO_KMH = 3.6
+SUPPORTED_PRECIPITATION_TYPES = {"none", "rain", "snow"}
 
 
 def _to_float(value: Any) -> float | None:
@@ -32,22 +33,34 @@ def _nested_value(data: Any, *keys: str) -> Any:
     return value
 
 
-def _precipitation_values(data: dict[str, Any]) -> tuple[float | None, float | None]:
-    total = _to_float(_nested_value(data, "precipitation", "total"))
-    precipitation_type = _nested_value(data, "precipitation", "type")
-    normalized_type = (
-        str(precipitation_type).strip().lower()
-        if precipitation_type is not None
-        else ""
+def _precipitation_type(data: dict[str, Any]) -> str | None:
+    value = _nested_value(data, "precipitation", "type")
+    if value is None:
+        return None
+
+    return str(value).strip().lower()
+
+
+def _has_unsupported_precipitation_type(data: dict[str, Any]) -> bool:
+    precipitation_type = _precipitation_type(data)
+    return (
+        precipitation_type is not None
+        and precipitation_type not in SUPPORTED_PRECIPITATION_TYPES
     )
+
+
+def _precipitation_values(data: dict[str, Any]) -> tuple[float | None, float | None]:
+    if _has_unsupported_precipitation_type(data):
+        return None, None
+
+    total = _to_float(_nested_value(data, "precipitation", "total"))
+    precipitation_type = _precipitation_type(data)
 
     if total is None:
         return None, None
 
-    if normalized_type == "snow":
+    if precipitation_type == "snow":
         snow = snowfall_cm_from_swe_mm(total)
-    elif normalized_type == "rain_snow":
-        snow = None
     else:
         snow = 0.0
 
@@ -57,6 +70,9 @@ def _precipitation_values(data: dict[str, Any]) -> tuple[float | None, float | N
 def _precipitation_probability(
     data: dict[str, Any],
 ) -> float | None:
+    if _has_unsupported_precipitation_type(data):
+        return None
+
     probability = _to_float(_nested_value(data, "probability", "precipitation"))
     if probability is None:
         return None

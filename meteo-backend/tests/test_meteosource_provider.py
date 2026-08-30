@@ -21,35 +21,41 @@ HAS_METEOSOURCE_API_KEY = bool(get_settings().meteosource_api_key)
 
 
 class MeteosourceNormalizationTestCase(unittest.TestCase):
-    def test_normalize_meteosource_keeps_missing_probability_as_none(self) -> None:
-        precipitation_types = [
-            ("none", 0.0, None, 0.0),
-            ("rain", 1.2, None, 0.0),
-            ("snow", 2.5, None, 2.5),
-            ("rain_snow", 3.0, None, None),
-            ("ice pellets", 0.8, None, 0.0),
-            ("frozen rain", 1.1, None, 0.0),
+    def test_normalize_meteosource_excludes_unsupported_precipitation_types(
+        self,
+    ) -> None:
+        precipitation_cases = [
+            ("none", 0.0, None, 0.0, None, 0.0),
+            ("rain", 1.2, None, 1.2, None, 0.0),
+            ("snow", 2.5, None, 2.5, None, 2.5),
+            ("rain_snow", 3.0, 63, None, None, None),
+            ("ice pellets", 0.8, 64, None, None, None),
+            ("frozen rain", 1.1, 65, None, None, None),
+            ("hail", 0.6, 66, None, None, None),
         ]
         hourly_data = []
 
-        for index, (kind, total, _, _) in enumerate(precipitation_types):
-            hourly_data.append(
-                {
-                    "date": f"2026-07-27T{index:02d}:00:00",
-                    "temperature": 20.0 + index,
-                    "wind": {"speed": 2.0},
-                    "cloud_cover": {"total": 40},
-                    "precipitation": {
-                        "total": total,
-                        "type": kind,
-                    },
-                }
-            )
+        for index, (kind, total, probability, _, _, _) in enumerate(
+            precipitation_cases
+        ):
+            hour = {
+                "date": f"2026-07-27T{index:02d}:00:00",
+                "temperature": 20.0 + index,
+                "wind": {"speed": 2.0},
+                "cloud_cover": {"total": 40},
+                "precipitation": {
+                    "total": total,
+                    "type": kind,
+                },
+            }
+            if probability is not None:
+                hour["probability"] = {"precipitation": probability}
+            hourly_data.append(hour)
 
         hourly_data.append(
             {
-                "date": "2026-07-27T06:00:00",
-                "temperature": 26.0,
+                "date": "2026-07-27T07:00:00",
+                "temperature": 27.0,
                 "probability": {"precipitation": 37},
                 "wind": {"speed": 1.0},
                 "cloud_cover": {"total": 20},
@@ -75,6 +81,18 @@ class MeteosourceNormalizationTestCase(unittest.TestCase):
                                 "type": "snow",
                             },
                         },
+                    },
+                    {
+                        "day": "2026-07-28",
+                        "all_day": {
+                            "temperature_min": 19.0,
+                            "temperature_max": 28.0,
+                            "cloud_cover": {"total": 70},
+                            "precipitation": {
+                                "total": 4.0,
+                                "type": "ice pellets",
+                            },
+                        },
                     }
                 ]
             },
@@ -84,16 +102,16 @@ class MeteosourceNormalizationTestCase(unittest.TestCase):
             data=data,
             latitude=BARCELONA_LATITUDE,
             longitude=BARCELONA_LONGITUDE,
-            days=1,
+            days=2,
         )
 
         self.assertEqual(forecast.provider, "meteosource")
         self.assertEqual(forecast.timezone, "Europe/Madrid")
-        self.assertEqual(len(forecast.forecast), 7)
+        self.assertEqual(len(forecast.forecast), 8)
 
-        for point, (_, total, probability, snow) in zip(
+        for point, (_, _, _, total, probability, snow) in zip(
             forecast.forecast,
-            precipitation_types,
+            precipitation_cases,
         ):
             self.assertEqual(point.precipitation_total, total)
             self.assertIs(point.precipitation_probability, probability)
@@ -101,9 +119,11 @@ class MeteosourceNormalizationTestCase(unittest.TestCase):
             self.assertEqual(point.wind_speed_kmh, 7.2)
 
         self.assertEqual(forecast.forecast[-1].precipitation_probability, 37.0)
-        self.assertEqual(len(forecast.daily_forecast), 1)
+        self.assertEqual(len(forecast.daily_forecast), 2)
         self.assertEqual(forecast.daily_forecast[0].precipitation_total, 2.0)
         self.assertEqual(forecast.daily_forecast[0].precipitation_snow, 2.0)
+        self.assertIsNone(forecast.daily_forecast[1].precipitation_total)
+        self.assertIsNone(forecast.daily_forecast[1].precipitation_snow)
 
 
 class MeteosourceProviderIntegrationTestCase(unittest.IsolatedAsyncioTestCase):
