@@ -7,8 +7,8 @@ class SelectedLocation(BaseModel):
     id: Optional[str] = None
     name: Optional[str] = None
     display_name: Optional[str] = None
-    latitude: float
-    longitude: float
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
     timezone: str
 
 

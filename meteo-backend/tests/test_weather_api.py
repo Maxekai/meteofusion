@@ -28,6 +28,41 @@ RUN_REAL_OPEN_METEO_TESTS = os.getenv("RUN_REAL_OPEN_METEO_TESTS") in {
 
 
 class WeatherApiTestCase(unittest.TestCase):
+    def test_post_forecasts_reject_coordinates_outside_valid_ranges(self) -> None:
+        endpoints = [
+            "/api/weather/aggregate/forecast",
+            "/api/weather/open_meteo/forecast",
+        ]
+        invalid_coordinates = [
+            ("latitude", -90.1),
+            ("latitude", 90.1),
+            ("longitude", -180.1),
+            ("longitude", 180.1),
+        ]
+
+        for endpoint in endpoints:
+            for field, value in invalid_coordinates:
+                with self.subTest(endpoint=endpoint, field=field, value=value):
+                    location = {
+                        "latitude": BARCELONA_LATITUDE,
+                        "longitude": BARCELONA_LONGITUDE,
+                        "timezone": "Europe/Madrid",
+                    }
+                    location[field] = value
+
+                    response = client.post(
+                        endpoint,
+                        json={"location": location, "days": 7},
+                    )
+
+                    self.assertEqual(response.status_code, 422)
+                    self.assertTrue(
+                        any(
+                            error["loc"] == ["body", "location", field]
+                            for error in response.json()["detail"]
+                        )
+                    )
+
     def test_post_aggregated_forecast_accepts_selected_location(self) -> None:
         async def fake_obtain_aggregated_weather_forecast(
             latitude: float,
