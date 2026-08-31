@@ -276,6 +276,59 @@ test("valida la accesibilidad de la portada y la previsión", async ({ page }) =
   expect(forecastScan.violations).toEqual([]);
 });
 
+test("RF2", async ({ page }) => {
+  let searchRequests = 0;
+
+  await page.route("**/api/locations/search?**", async (route) => {
+    searchRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ query: "", count: 10, results: [] }),
+    });
+  });
+
+  await page.goto("/");
+
+  for (const query of ["", "B"]) {
+    await page.getByRole("combobox").fill(query);
+    await page.getByRole("button", { name: "Buscar" }).click();
+    await expect(page.getByText("Escribe al menos dos caracteres.")).toBeVisible();
+  }
+
+  expect(searchRequests).toBe(0);
+});
+
+test("RF22", async ({ page }) => {
+  await page.route("**/api/locations/search?**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ query: "Barcelona", count: 10, results: locations }),
+    });
+  });
+
+  await page.route("**/api/weather/aggregate/forecast", async (route) => {
+    await route.fulfill({
+      status: 502,
+      contentType: "application/json",
+      body: JSON.stringify({
+        detail: "No se ha podido obtener la prediccion de ningun proveedor.",
+      }),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("combobox").fill("Barcelona");
+  await page.getByRole("button", { name: "Buscar" }).click();
+  await page.getByRole("option").first().click();
+
+  const errorMessage = page.getByRole("alert");
+  await expect(errorMessage).toBeVisible();
+  await expect(errorMessage).toHaveText(
+    "No se ha podido obtener la prediccion de ningun proveedor.",
+  );
+  await expect(page.locator(".day-card")).toHaveCount(0);
+});
+
 test("mide el rendimiento aislado del frontend", async ({ page }) => {
   await page.route("**/api/locations/search?**", async (route) => {
     await route.fulfill({

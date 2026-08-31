@@ -162,6 +162,71 @@ def _build_provider_forecast(
 
 
 class ConsensusWeatherServiceTestCase(unittest.IsolatedAsyncioTestCase):
+    async def test_RF21(self) -> None:
+        async def fake_open_meteo(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            return _build_provider_forecast(
+                provider="open_meteo",
+                first_hour_temperature=22.0,
+                second_hour_temperature=17.0,
+                first_hour_probability=20.0,
+                second_hour_probability=70.0,
+                second_hour_precipitation=2.0,
+                first_hour_cloud_cover=20.0,
+                second_hour_cloud_cover=80.0,
+                first_hour_humidity=55.0,
+                second_hour_humidity=68.0,
+                first_hour_wind=6.0,
+                second_hour_wind=8.0,
+                first_hour_apparent_temperature=22.0,
+                second_hour_apparent_temperature=16.0,
+            )
+
+        async def fake_failure(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            raise WeatherProviderError("Proveedor fuera de servicio")
+
+        provider_fetchers = {
+            "google_weather": fake_failure,
+            "meteosource": fake_failure,
+            "open_meteo": fake_open_meteo,
+            "visual_crossing": fake_failure,
+            "weather_api": fake_failure,
+            "xweather": fake_failure,
+        }
+
+        with patch(
+            "app.services.consensus_weather_service._get_provider_fetchers",
+            return_value=provider_fetchers,
+        ):
+            aggregated_forecast = await obtain_aggregated_weather_forecast(
+                latitude=BARCELONA_LATITUDE,
+                longitude=BARCELONA_LONGITUDE,
+                days=7,
+            )
+
+        self.assertEqual(aggregated_forecast.providers_used, ["open_meteo"])
+        self.assertEqual(len(aggregated_forecast.provider_errors), 5)
+        self.assertNotIn("open_meteo", aggregated_forecast.provider_errors)
+        self.assertEqual(
+            aggregated_forecast.hourly_window.mode,
+            "single_provider_range",
+        )
+        self.assertEqual(len(aggregated_forecast.hourly_forecast), 2)
+        self.assertEqual(aggregated_forecast.hourly_forecast[0].provider_count, 1)
+        self.assertEqual(len(aggregated_forecast.daily_forecast), 1)
+        self.assertEqual(aggregated_forecast.daily_forecast[0].provider_count, 1)
+        self.assertIn(
+            "La agregacion se ha calculado con los proveedores disponibles.",
+            aggregated_forecast.warnings,
+        )
+
     async def test_obtain_aggregated_weather_forecast_keeps_longer_provider_horizon(
         self,
     ) -> None:

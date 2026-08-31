@@ -11,6 +11,25 @@ client = TestClient(app)
 
 
 class LocationsApiTestCase(unittest.TestCase):
+    def test_RF2(self) -> None:
+        with patch("app.api.locations.search_locations") as search_mock:
+            for query in ("", "B"):
+                with self.subTest(query=query):
+                    response = client.get(
+                        "/api/locations/search",
+                        params={"q": query},
+                    )
+
+                    self.assertEqual(response.status_code, 422)
+                    self.assertTrue(
+                        any(
+                            error["loc"] == ["query", "q"]
+                            for error in response.json()["detail"]
+                        )
+                    )
+
+            search_mock.assert_not_called()
+
     def test_search_location_candidates_returns_options_for_frontend_selection(
         self,
     ) -> None:

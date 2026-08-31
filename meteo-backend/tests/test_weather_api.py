@@ -28,6 +28,49 @@ RUN_REAL_OPEN_METEO_TESTS = os.getenv("RUN_REAL_OPEN_METEO_TESTS") in {
 
 
 class WeatherApiTestCase(unittest.TestCase):
+    def test_RF22(self) -> None:
+        async def fake_failure(
+            latitude: float,
+            longitude: float,
+            days: int,
+        ) -> ProviderForecast:
+            raise RuntimeError("Proveedor fuera de servicio")
+
+        provider_fetchers = {
+            "google_weather": fake_failure,
+            "meteosource": fake_failure,
+            "open_meteo": fake_failure,
+            "visual_crossing": fake_failure,
+            "weather_api": fake_failure,
+            "xweather": fake_failure,
+        }
+
+        with patch(
+            "app.services.consensus_weather_service._get_provider_fetchers",
+            return_value=provider_fetchers,
+        ):
+            response = client.post(
+                "/api/weather/aggregate/forecast",
+                json={
+                    "location": {
+                        "latitude": BARCELONA_LATITUDE,
+                        "longitude": BARCELONA_LONGITUDE,
+                        "timezone": "Europe/Madrid",
+                    },
+                    "days": 7,
+                },
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.json(),
+            {
+                "detail": (
+                    "No se ha podido obtener la prediccion de ningun proveedor."
+                )
+            },
+        )
+
     def test_post_forecasts_reject_coordinates_outside_valid_ranges(self) -> None:
         endpoints = [
             "/api/weather/aggregate/forecast",
