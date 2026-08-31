@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 const locations = [
   {
@@ -153,6 +154,12 @@ test("permite elegir una ciudad homónima y cambiar el día mostrado", async ({ 
 
   await expect(page.getByRole("heading", { name: "Próximos 7 días" })).toBeVisible();
   await expect(page.locator(".day-card")).toHaveCount(7);
+  const firstDayCard = page.locator(".day-card").first();
+  const providerTooltip = firstDayCard.getByRole("tooltip");
+  await expect(providerTooltip).toBeHidden();
+  await firstDayCard.hover();
+  await expect(providerTooltip).toBeVisible();
+  await expect(providerTooltip).toHaveText("3 proveedores participan");
   await expect(page.locator(".topbar-source-count")).toContainText("3 proveedores");
   await expect(page.locator(".location-banner")).not.toContainText("Consenso");
   await expect(page.locator(".location-banner")).not.toContainText("Europe/Madrid");
@@ -218,4 +225,103 @@ test("permite elegir una ciudad homónima y cambiar el día mostrado", async ({ 
     path: "test-results/results-desktop.png",
     fullPage: true,
   });
+});
+
+test("valida la accesibilidad de la portada y la previsión", async ({ page }) => {
+  await page.route("**/api/locations/search?**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ query: "Barcelona", count: 10, results: locations }),
+    });
+  });
+
+  await page.route("**/api/weather/aggregate/forecast", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(forecast),
+    });
+  });
+
+  const analyzePage = () =>
+    new AxeBuilder({ page })
+      .withTags([
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22a",
+        "wcag22aa",
+      ])
+      .analyze();
+
+  await page.goto("/");
+  const landingScan = await analyzePage();
+  expect(landingScan.violations).toEqual([]);
+
+  await page.getByRole("combobox").fill("Barcelona");
+  await page.getByRole("button", { name: "Buscar" }).click();
+  const barcelonaSpain = page
+    .getByRole("option")
+    .filter({ hasText: locations[0].display_name });
+  await expect(barcelonaSpain).toBeVisible();
+
+  const locationResultsScan = await analyzePage();
+  expect(locationResultsScan.violations).toEqual([]);
+
+  await barcelonaSpain.click();
+  await expect(page.locator(".day-card")).toHaveCount(7);
+  await expect(page.locator(".hourly-panel")).toBeVisible();
+
+  const forecastScan = await analyzePage();
+  expect(forecastScan.violations).toEqual([]);
+});
+
+test("mide el rendimiento aislado del frontend", async ({ page }) => {
+  await page.route("**/api/locations/search?**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ query: "Barcelona", count: 10, results: locations }),
+    });
+  });
+
+  await page.route("**/api/weather/aggregate/forecast", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(forecast),
+    });
+  });
+
+  async function renderForecast(): Promise<number> {
+    await page.goto("/");
+    await page.getByRole("combobox").fill("Barcelona");
+    await page.getByRole("button", { name: "Buscar" }).click();
+    await expect(page.getByRole("option")).toHaveCount(2);
+
+    const start = Date.now();
+    await page.getByRole("option").first().click();
+    await expect(page.locator(".day-card")).toHaveCount(7);
+    await expect(page.locator(".day-card").first()).toBeVisible();
+    await expect(page.locator(".hourly-panel")).toBeVisible();
+    return Date.now() - start;
+  }
+
+  await renderForecast();
+
+  const times = [];
+  for (let execution = 1; execution <= 10; execution += 1) {
+    const elapsed = await renderForecast();
+    times.push(elapsed);
+    console.log(`${String(execution).padStart(2, "0")}: ${elapsed} ms`);
+  }
+
+  const sortedTimes = [...times].sort((a, b) => a - b);
+  const median = (sortedTimes[4] + sortedTimes[5]) / 2;
+  const average = times.reduce((total, value) => total + value, 0) / times.length;
+
+  console.log("\nResumen del frontend");
+  console.log(`Numero de ejecuciones: ${times.length}`);
+  console.log(`Tiempo minimo: ${Math.min(...times)} ms`);
+  console.log(`Mediana: ${median.toFixed(1)} ms`);
+  console.log(`Promedio: ${average.toFixed(1)} ms`);
+  console.log(`Tiempo maximo: ${Math.max(...times)} ms`);
 });

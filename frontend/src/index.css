@@ -861,6 +861,44 @@ svg {
   opacity: 1;
 }
 
+.day-provider-tooltip {
+  position: absolute;
+  z-index: 4;
+  top: 40px;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 16px);
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: #10213f;
+  box-shadow: 0 6px 16px rgba(16, 33, 63, 0.2);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.day-provider-tooltip::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  border: 4px solid transparent;
+  border-top-color: #10213f;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.day-card:hover .day-provider-tooltip,
+.day-card:focus-visible .day-provider-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
 .day-card-topline {
   display: flex;
   width: 100%;

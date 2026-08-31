@@ -134,7 +134,12 @@ export function LocationSearch({
             value={query}
           />
         </div>
-        <button className="search-submit" disabled={disabled} type="submit">
+        <button
+          aria-label={isSearching ? "Buscando ubicaciones" : "Buscar ubicaciones"}
+          className="search-submit"
+          disabled={disabled}
+          type="submit"
+        >
           {isSearching ? (
             <span className="button-spinner" aria-hidden="true" />
           ) : (

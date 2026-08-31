@@ -87,9 +87,15 @@ export function DailyForecast({
         <div className="daily-grid">
           {days.map((day, index) => {
             const isSelected = day.date === selectedDate;
+            const providerTooltipId = `day-providers-${day.date}`;
+            const providerLabel =
+              day.provider_count === 1
+                ? "1 proveedor participa"
+                : `${day.provider_count} proveedores participan`;
 
             return (
               <button
+                aria-describedby={providerTooltipId}
                 aria-pressed={isSelected}
                 className={`day-card ${isSelected ? "day-card--selected" : ""}`}
                 key={day.date}
@@ -97,6 +103,14 @@ export function DailyForecast({
                 style={{ "--card-index": index } as CSSProperties}
                 type="button"
               >
+                <span
+                  className="day-provider-tooltip"
+                  id={providerTooltipId}
+                  role="tooltip"
+                >
+                  {providerLabel}
+                </span>
+
                 <span className="day-card-topline">
                   <span className="day-name">{formatDayName(day.date)}</span>
                   <span className="day-date-separator" aria-hidden="true">-</span>
